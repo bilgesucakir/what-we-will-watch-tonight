@@ -87,6 +87,15 @@ class TmdbPosterServiceTest {
     }
 
     @Test
+    void searchesWithoutAReleaseYearWhenTheYearIsUnknown() {
+        TmdbPosterService service = serviceWith("test-key", baseUrl);
+
+        String url = service.findPosterUrl("Dune: Part Two", null);
+
+        assertThat(url).isEqualTo("https://image.tmdb.org/t/p/w342/poster123.jpg");
+    }
+
+    @Test
     void returnsNullWhenTmdbHasNoResults() {
         TmdbPosterService service = serviceWith("test-key", baseUrl);
 

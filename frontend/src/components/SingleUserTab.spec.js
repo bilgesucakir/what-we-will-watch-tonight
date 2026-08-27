@@ -151,6 +151,17 @@ describe('SingleUserTab', () => {
     expect(wrapper.text()).toContain('Watchlist inaccessible (private or nonexistent) for: ghost')
   })
 
+  it('shows a connection error when the request fails outright', async () => {
+    watchlistImpl = () => Promise.reject(new Error('offline'))
+
+    const wrapper = mount(SingleUserTab)
+    await setUsername(wrapper, 'alice')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Could not reach the server. Please try again.')
+  })
+
   it('downloads a CSV named after the single username', async () => {
     watchlistImpl = () =>
       jsonResponse([{ title: 'The Godfather (1972)', url: 'https://letterboxd.com/film/the-godfather/', year: 1972 }])

@@ -1,6 +1,7 @@
 package com.whatwewillwatchtonight.service;
 
 import com.sun.net.httpserver.HttpServer;
+import com.whatwewillwatchtonight.model.Film;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -9,6 +10,7 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 class LetterboxdScraperServiceTest {
 
@@ -224,5 +226,122 @@ class LetterboxdScraperServiceTest {
         assertThat(check.userExists()).isFalse();
         assertThat(check.watchlistPublic()).isFalse();
         assertThat(check.avatarUrl()).isNull();
+    }
+
+    @Test
+    void fetchWatchlistTreatsANon404HttpErrorAsPrivateOrEmpty() {
+        server.createContext("/broken/watchlist/", exchange -> respond(exchange, 500, "boom"));
+
+        WatchlistResult result = scraperService.fetchWatchlist("broken");
+
+        assertThat(result.accessible()).isFalse();
+        assertThat(result.reason()).isEqualTo(WatchlistResult.Reason.PRIVATE_OR_EMPTY);
+    }
+
+    @Test
+    void checkUsernameTreatsANon404HttpErrorAsNotFound() {
+        server.createContext("/broken/watchlist/", exchange -> respond(exchange, 500, "boom"));
+
+        UsernameCheck check = scraperService.checkUsername("broken");
+
+        assertThat(check.userExists()).isFalse();
+    }
+
+    @Test
+    void keepsThePage1FilmsWhenALaterPageFailsToLoad() {
+        server.createContext("/flaky/watchlist/", exchange -> respond(exchange, 200, """
+                <html><body>
+                  <div data-item-slug="dune-part-two" data-item-name="Dune: Part Two (2024)"
+                       data-item-full-display-name="Dune: Part Two (2024)"></div>
+                  <div class="pagination"><a href="/flaky/watchlist/page/2/">2</a></div>
+                </body></html>
+                """));
+        server.createContext("/flaky/watchlist/page/2/", exchange -> respond(exchange, 500, "boom"));
+
+        WatchlistResult result = scraperService.fetchWatchlist("flaky");
+
+        assertThat(result.accessible()).isTrue();
+        assertThat(result.films()).extracting(Film::slug).containsExactly("dune-part-two");
+    }
+
+    @Test
+    void skipsTilesWhoseSlugIsBlank() {
+        server.createContext("/blanks/watchlist/", exchange -> respond(exchange, 200, """
+                <html><body>
+                  <div data-item-slug="" data-item-name="Ghost Tile"></div>
+                  <div data-item-slug="anora" data-item-name="Anora (2024)"></div>
+                </body></html>
+                """));
+
+        WatchlistResult result = scraperService.fetchWatchlist("blanks");
+
+        assertThat(result.films()).extracting(Film::slug).containsExactly("anora");
+    }
+
+    @Test
+    void titleFallsBackThroughDataItemNameThenTheSlug() {
+        server.createContext("/titles/watchlist/", exchange -> respond(exchange, 200, """
+                <html><body>
+                  <div data-item-slug="only-name" data-item-name="Only The Name (1999)"></div>
+                  <div data-item-slug="nothing-at-all"></div>
+                </body></html>
+                """));
+
+        WatchlistResult result = scraperService.fetchWatchlist("titles");
+
+        assertThat(result.films())
+                .extracting(Film::slug, Film::title)
+                .containsExactlyInAnyOrder(
+                        tuple("only-name", "Only The Name (1999)"),
+                        tuple("nothing-at-all", "nothing-at-all"));
+    }
+
+    @Test
+    void readsTheLastPageNumberFromLinkTextWhenTheHrefHasNone() {
+        server.createContext("/textpages/watchlist/", exchange -> respond(exchange, 200, """
+                <html><body>
+                  <div data-item-slug="a" data-item-name="A (2000)"></div>
+                  <div class="pagination">
+                    <a href="/textpages/">Next</a>
+                    <a href="/somewhere-else">2</a>
+                  </div>
+                </body></html>
+                """));
+        server.createContext("/textpages/watchlist/page/2/", exchange -> respond(exchange, 200, """
+                <html><body><div data-item-slug="b" data-item-name="B (2001)"></div></body></html>
+                """));
+
+        WatchlistResult result = scraperService.fetchWatchlist("textpages");
+
+        assertThat(result.films()).extracting(Film::slug).containsExactlyInAnyOrder("a", "b");
+    }
+
+    @Test
+    void avatarUrlIsNullWhenTheImgHasABlankSrc() {
+        server.createContext("/noavatarsrc/watchlist/", exchange -> respond(exchange, 200, """
+                <html><body>
+                  <section class="profile-header">
+                    <a class="avatar" href="/noavatarsrc/"><img src="" alt="x" /></a>
+                  </section>
+                  <div data-item-slug="anora" data-item-name="Anora (2024)"></div>
+                </body></html>
+                """));
+
+        UsernameCheck check = scraperService.checkUsername("noavatarsrc");
+
+        assertThat(check.userExists()).isTrue();
+        assertThat(check.avatarUrl()).isNull();
+    }
+
+    @Test
+    void stillCollectsEveryFilmWhenAPageDelayIsConfigured() {
+        LetterboxdScraperService slowScraper =
+                new LetterboxdScraperService("http://localhost:" + server.getAddress().getPort(), 1);
+
+        WatchlistResult result = slowScraper.fetchWatchlist("alice");
+
+        assertThat(result.films())
+                .extracting(Film::slug)
+                .containsExactlyInAnyOrder("dune-part-two", "the-substance", "anora");
     }
 }
