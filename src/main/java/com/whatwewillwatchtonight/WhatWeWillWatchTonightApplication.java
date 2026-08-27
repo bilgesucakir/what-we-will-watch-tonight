@@ -9,8 +9,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
         info = @Info(
                 title = "What We Will Watch Tonight API",
                 version = "v1",
-                description = "Finds films shared between two Letterboxd users' public watchlists "
-                        + "(or picks one at random), and does the same for a single user's own watchlist."
+                description = "Scrapes public Letterboxd watchlists and helps a group of 2-4 people "
+                        + "(or one person) pick something to watch: the full overlap, one random pick, "
+                        + "or -- when a group has nothing in common -- a random underwatched film."
         )
 )
 @SpringBootApplication
