@@ -55,4 +55,11 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.watchlistPublic").value(false))
                 .andExpect(jsonPath("$.avatarUrl").value(org.hamcrest.Matchers.nullValue()));
     }
+
+    @Test
+    void returns400WhenTheUsernameIsBlank() throws Exception {
+        mockMvc.perform(get("/api/users/{username}/exists", "   "))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("Fill in")));
+    }
 }

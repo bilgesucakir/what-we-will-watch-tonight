@@ -30,6 +30,8 @@ public class LetterboxdScraperService {
     private static final int REQUEST_TIMEOUT_MS = 10_000;
     private static final Pattern PAGE_NUMBER_PATTERN = Pattern.compile("/page/(\\d+)/?$");
     private static final Pattern YEAR_PATTERN = Pattern.compile("\\((\\d{4})\\)\\s*$");
+    private static final Pattern AVATAR_CROP_SIZE_PATTERN = Pattern.compile("avtr-0-\\d+-0-\\d+-crop");
+    private static final String AVATAR_CROP_SIZE_REPLACEMENT = "avtr-0-220-0-220-crop";
 
     private final String baseUrl;
     private final long delayBetweenPagesMs;
@@ -66,15 +68,24 @@ public class LetterboxdScraperService {
 
     /**
      * @param page the fetched watchlist page
-     * @return the avatar image URL from the page header, or {@code null} if the
-     *         markup doesn't have one
+     * @return the avatar image URL from the page header, upgraded to a larger
+     *         crop, or {@code null} if the markup doesn't have one
      */
     private String extractAvatarUrl(Document page) {
         Element avatar = page.selectFirst(".profile-header a.avatar img");
         if (avatar == null || avatar.attr("src").isBlank()) {
             return null;
         }
-        return avatar.attr("src");
+        return upgradeAvatarResolution(avatar.attr("src"));
+    }
+
+    /**
+     * @param src the avatar URL as it appears in the page markup
+     * @return the same URL asking for a 220px crop, or {@code src} unchanged if
+     *         it isn't a Letterboxd resized-avatar URL
+     */
+    private String upgradeAvatarResolution(String src) {
+        return AVATAR_CROP_SIZE_PATTERN.matcher(src).replaceFirst(AVATAR_CROP_SIZE_REPLACEMENT);
     }
 
     /**
@@ -90,15 +101,22 @@ public class LetterboxdScraperService {
         Document firstPage;
         try {
             firstPage = get(firstPageUrl);
+        } catch (HttpStatusException e) {
+            // A 404 on the watchlist page means the username itself doesn't exist.
+            if (e.getStatusCode() == 404) {
+                return WatchlistResult.inaccessible(username, WatchlistResult.Reason.NONEXISTENT);
+            }
+            log.warn("Failed to fetch watchlist page 1 for user '{}': {}", username, e.getMessage());
+            return WatchlistResult.inaccessible(username, WatchlistResult.Reason.PRIVATE_OR_EMPTY);
         } catch (IOException e) {
             log.warn("Failed to fetch watchlist page 1 for user '{}': {}", username, e.getMessage());
-            return WatchlistResult.inaccessible(username);
+            return WatchlistResult.inaccessible(username, WatchlistResult.Reason.PRIVATE_OR_EMPTY);
         }
 
         Set<Film> films = new HashSet<>();
         Elements firstPageTiles = firstPage.select("[data-item-slug]");
         if (firstPageTiles.isEmpty()) {
-            return WatchlistResult.inaccessible(username);
+            return WatchlistResult.inaccessible(username, WatchlistResult.Reason.PRIVATE_OR_EMPTY);
         }
         films.addAll(extractFilms(firstPageTiles));
 

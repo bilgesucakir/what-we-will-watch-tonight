@@ -50,7 +50,7 @@ class IntersectControllerTest {
                 new FilmMatchDto("Dune: Part Two (2024)", "https://letterboxd.com/film/dune-part-two/", 2024,
                         "https://image.tmdb.org/t/p/w342/poster.jpg")));
 
-        mockMvc.perform(get("/api/intersect").param("user1", "alice").param("user2", "bob"))
+        mockMvc.perform(get("/api/intersect").param("user", "alice").param("user", "bob"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].title").value("Dune: Part Two (2024)"))
@@ -69,7 +69,7 @@ class IntersectControllerTest {
                 new Film("the-substance", "The Substance (2024)", 2024))));
         when(filmResponseService.toDtos(any(), eq(false))).thenReturn(List.of());
 
-        mockMvc.perform(get("/api/intersect").param("user1", "alice").param("user2", "bob"))
+        mockMvc.perform(get("/api/intersect").param("user", "alice").param("user", "bob"))
                 .andExpect(status().isOk());
 
         verify(filmResponseService).toDtos(
@@ -84,7 +84,7 @@ class IntersectControllerTest {
                 new Film("dune-part-two", "Dune: Part Two (2024)", 2024))));
         when(filmResponseService.toDtos(any(), eq(true))).thenReturn(List.of());
 
-        mockMvc.perform(get("/api/intersect").param("user1", "alice").param("user2", "bob").param("random", "true"))
+        mockMvc.perform(get("/api/intersect").param("user", "alice").param("user", "bob").param("random", "true"))
                 .andExpect(status().isOk());
 
         verify(filmResponseService).toDtos(any(), eq(true));
@@ -98,38 +98,115 @@ class IntersectControllerTest {
                 new Film("anora", "Anora (2024)", 2024))));
         when(filmResponseService.toDtos(eq(List.of()), eq(false))).thenReturn(List.of());
 
-        mockMvc.perform(get("/api/intersect").param("user1", "alice").param("user2", "bob"))
+        mockMvc.perform(get("/api/intersect").param("user", "alice").param("user", "bob"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
     }
 
     @Test
-    void returns400NamingInaccessibleUser() throws Exception {
-        when(scraperService.fetchWatchlist(eq("alice"))).thenReturn(WatchlistResult.inaccessible("alice"));
+    void returns400NamingOnlyTheNonexistentUser() throws Exception {
+        when(scraperService.fetchWatchlist(eq("alice")))
+                .thenReturn(WatchlistResult.inaccessible("alice", WatchlistResult.Reason.NONEXISTENT));
         when(scraperService.fetchWatchlist(eq("bob"))).thenReturn(WatchlistResult.of("bob", Set.of(
                 new Film("anora", "Anora (2024)", 2024))));
 
-        mockMvc.perform(get("/api/intersect").param("user1", "alice").param("user2", "bob"))
+        mockMvc.perform(get("/api/intersect").param("user", "alice").param("user", "bob"))
                 .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("no Letterboxd user")))
                 .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("alice")))
                 .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("bob"))));
     }
 
     @Test
-    void returns400NamingBothUsersWhenBothInaccessible() throws Exception {
-        when(scraperService.fetchWatchlist(eq("alice"))).thenReturn(WatchlistResult.inaccessible("alice"));
-        when(scraperService.fetchWatchlist(eq("bob"))).thenReturn(WatchlistResult.inaccessible("bob"));
+    void returns400WithADistinctMessageForPrivateWatchlists() throws Exception {
+        when(scraperService.fetchWatchlist(eq("alice")))
+                .thenReturn(WatchlistResult.inaccessible("alice", WatchlistResult.Reason.PRIVATE_OR_EMPTY));
+        when(scraperService.fetchWatchlist(eq("bob")))
+                .thenReturn(WatchlistResult.inaccessible("bob", WatchlistResult.Reason.PRIVATE_OR_EMPTY));
 
-        mockMvc.perform(get("/api/intersect").param("user1", "alice").param("user2", "bob"))
+        mockMvc.perform(get("/api/intersect").param("user", "alice").param("user", "bob"))
                 .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("private or empty")))
                 .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.allOf(
                         org.hamcrest.Matchers.containsString("alice"),
                         org.hamcrest.Matchers.containsString("bob"))));
     }
 
     @Test
-    void returns400WhenUsernameIsBlank() throws Exception {
-        mockMvc.perform(get("/api/intersect").param("user1", " ").param("user2", "bob"))
-                .andExpect(status().isBadRequest());
+    void nonexistentUserTakesPrecedenceOverPrivateWatchlistInTheError() throws Exception {
+        when(scraperService.fetchWatchlist(eq("ghost")))
+                .thenReturn(WatchlistResult.inaccessible("ghost", WatchlistResult.Reason.NONEXISTENT));
+        when(scraperService.fetchWatchlist(eq("shy")))
+                .thenReturn(WatchlistResult.inaccessible("shy", WatchlistResult.Reason.PRIVATE_OR_EMPTY));
+
+        mockMvc.perform(get("/api/intersect").param("user", "ghost").param("user", "shy"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("no Letterboxd user")))
+                .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("ghost")));
+    }
+
+    @Test
+    void returns400ListingEveryNonexistentUser() throws Exception {
+        when(scraperService.fetchWatchlist(eq("ghost")))
+                .thenReturn(WatchlistResult.inaccessible("ghost", WatchlistResult.Reason.NONEXISTENT));
+        when(scraperService.fetchWatchlist(eq("phantom")))
+                .thenReturn(WatchlistResult.inaccessible("phantom", WatchlistResult.Reason.NONEXISTENT));
+
+        mockMvc.perform(get("/api/intersect").param("user", "ghost").param("user", "phantom"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.allOf(
+                        org.hamcrest.Matchers.containsString("ghost"),
+                        org.hamcrest.Matchers.containsString("phantom"))));
+    }
+
+    @Test
+    void returns400WithAMissingParameterMessageWhenNoUsersAtAll() throws Exception {
+        mockMvc.perform(get("/api/intersect"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("Missing required parameter")));
+    }
+
+    @Test
+    void returns400WithADistinctMessageWhenAUsernameIsBlank() throws Exception {
+        mockMvc.perform(get("/api/intersect").param("user", " ").param("user", "bob"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("Fill in")));
+    }
+
+    @Test
+    void returns400WithADistinctMessageWhenFewerThanTwoUsernames() throws Exception {
+        mockMvc.perform(get("/api/intersect").param("user", "alice"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("between 2 and 4")));
+    }
+
+    @Test
+    void returns400WithADistinctMessageWhenMoreThanFourUsernames() throws Exception {
+        mockMvc.perform(get("/api/intersect")
+                        .param("user", "a").param("user", "b").param("user", "c")
+                        .param("user", "d").param("user", "e"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("between 2 and 4")));
+    }
+
+    @Test
+    void intersectsEveryWatchlistWhenGivenThreeUsers() throws Exception {
+        when(scraperService.fetchWatchlist(eq("alice"))).thenReturn(WatchlistResult.of("alice", Set.of(
+                new Film("dune-part-two", "Dune: Part Two (2024)", 2024),
+                new Film("anora", "Anora (2024)", 2024))));
+        when(scraperService.fetchWatchlist(eq("bob"))).thenReturn(WatchlistResult.of("bob", Set.of(
+                new Film("dune-part-two", "Dune: Part Two (2024)", 2024),
+                new Film("anora", "Anora (2024)", 2024))));
+        when(scraperService.fetchWatchlist(eq("carol"))).thenReturn(WatchlistResult.of("carol", Set.of(
+                new Film("anora", "Anora (2024)", 2024),
+                new Film("the-substance", "The Substance (2024)", 2024))));
+        when(filmResponseService.toDtos(any(), eq(false))).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/intersect")
+                        .param("user", "alice").param("user", "bob").param("user", "carol"))
+                .andExpect(status().isOk());
+
+        verify(filmResponseService).toDtos(
+                eq(List.of(new Film("anora", "Anora (2024)", 2024))), eq(false));
     }
 }

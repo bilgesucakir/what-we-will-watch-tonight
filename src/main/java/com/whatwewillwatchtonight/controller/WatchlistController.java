@@ -1,7 +1,9 @@
 package com.whatwewillwatchtonight.controller;
 
-import com.whatwewillwatchtonight.controller.dto.ErrorResponseDto;
 import com.whatwewillwatchtonight.controller.dto.FilmMatchDto;
+import com.whatwewillwatchtonight.controller.error.BlankUsernameException;
+import com.whatwewillwatchtonight.controller.error.UserNotFoundException;
+import com.whatwewillwatchtonight.controller.error.WatchlistUnavailableException;
 import com.whatwewillwatchtonight.service.FilmResponseService;
 import com.whatwewillwatchtonight.service.LetterboxdScraperService;
 import com.whatwewillwatchtonight.service.WatchlistResult;
@@ -34,20 +36,23 @@ public class WatchlistController {
             description = "Returns every film on one user's public watchlist, or a single random pick."
     )
     @ApiResponse(responseCode = "200", description = "The films, or a single random pick")
-    @ApiResponse(responseCode = "400", description = "The username is blank, doesn't exist, or its watchlist is private")
+    @ApiResponse(responseCode = "400", description = "The username is blank, the user doesn't exist, "
+            + "or their watchlist is private/empty (each is a distinct message)")
     @GetMapping("/api/watchlist")
-    public ResponseEntity<?> watchlist(
+    public ResponseEntity<List<FilmMatchDto>> watchlist(
             @Parameter(description = "Letterboxd username") @RequestParam String user,
             @Parameter(description = "Return a single random film instead of the full list")
             @RequestParam(defaultValue = "false") boolean random) {
         if (user.isBlank()) {
-            return ResponseEntity.badRequest().body(new ErrorResponseDto("user is required."));
+            throw new BlankUsernameException();
         }
 
         WatchlistResult result = scraperService.fetchWatchlist(user);
         if (!result.accessible()) {
-            String error = "Watchlist inaccessible (private or nonexistent) for: " + user;
-            return ResponseEntity.badRequest().body(new ErrorResponseDto(error));
+            throw switch (result.reason()) {
+                case NONEXISTENT -> new UserNotFoundException(List.of(user));
+                case PRIVATE_OR_EMPTY -> new WatchlistUnavailableException(List.of(user));
+            };
         }
 
         List<FilmMatchDto> matches = filmResponseService.toDtos(List.copyOf(result.films()), random);

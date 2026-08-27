@@ -4,25 +4,28 @@ import com.whatwewillwatchtonight.model.Film;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 public class WatchlistIntersectionService {
 
     /**
-     * @param result1 the first user's watchlist
-     * @param result2 the second user's watchlist
-     * @return the films present on both, in no particular order, using each film's
-     *         title and year from {@code result1}
+     * @param results the watchlists to intersect (two to four of them)
+     * @return the films present on every one, in no particular order, using each
+     *         film's title and year from the first watchlist
      */
-    public List<Film> intersect(WatchlistResult result1, WatchlistResult result2) {
-        Map<String, Film> filmsBySlug = result1.films().stream()
-                .collect(Collectors.toMap(Film::slug, film -> film, (a, b) -> a));
+    public List<Film> intersect(List<WatchlistResult> results) {
+        if (results.isEmpty()) {
+            return List.of();
+        }
 
-        return result2.films().stream()
-                .filter(film -> filmsBySlug.containsKey(film.slug()))
-                .map(film -> filmsBySlug.get(film.slug()))
+        List<Set<String>> slugsPerWatchlist = results.stream()
+                .map(result -> result.films().stream().map(Film::slug).collect(Collectors.toSet()))
+                .toList();
+
+        return results.get(0).films().stream()
+                .filter(film -> slugsPerWatchlist.stream().allMatch(slugs -> slugs.contains(film.slug())))
                 .toList();
     }
 }

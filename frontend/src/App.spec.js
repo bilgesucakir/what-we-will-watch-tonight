@@ -11,31 +11,31 @@ describe('App', () => {
     vi.restoreAllMocks()
   })
 
-  it('shows the single-user tab by default', () => {
+  it('shows the two-user tab by default', () => {
     const wrapper = mount(App)
+
+    expect(wrapper.text()).toContain("What We'll Watch Tonight")
+    expect(wrapper.findAll('input')).toHaveLength(2)
+  })
+
+  it('switches to the single-user tab when clicked', async () => {
+    const wrapper = mount(App)
+
+    await wrapper.findAll('.tab')[1].trigger('click')
 
     expect(wrapper.text()).toContain("What I'll Watch Tonight")
     expect(wrapper.text()).not.toContain("What We'll Watch Tonight")
     expect(wrapper.findAll('input')).toHaveLength(1)
   })
 
-  it('switches to the two-user tab when clicked', async () => {
-    const wrapper = mount(App)
-
-    await wrapper.findAll('.tab')[1].trigger('click')
-
-    expect(wrapper.text()).toContain("What We'll Watch Tonight")
-    expect(wrapper.findAll('input')).toHaveLength(2)
-  })
-
-  it('switches back to the single-user tab', async () => {
+  it('switches back to the two-user tab', async () => {
     const wrapper = mount(App)
 
     await wrapper.findAll('.tab')[1].trigger('click')
     await wrapper.findAll('.tab')[0].trigger('click')
 
-    expect(wrapper.text()).toContain("What I'll Watch Tonight")
-    expect(wrapper.findAll('input')).toHaveLength(1)
+    expect(wrapper.text()).toContain("What We'll Watch Tonight")
+    expect(wrapper.findAll('input')).toHaveLength(2)
   })
 
   it('shows the GitHub link regardless of active tab', () => {

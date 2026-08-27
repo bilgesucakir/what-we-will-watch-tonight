@@ -9,6 +9,7 @@ node_modules/
 frontend/node/
 frontend/dist/
 frontend/.vite/
+frontend/coverage/
 npm-debug.log*
 src/main/resources/static/
 
