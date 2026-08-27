@@ -1,4 +1,4 @@
-# watchlist-intersector
+# what-we-will-watch-tonight
 
 Spring Boot and Vue-based watchlist tool for Jsoup-driven Letterboxd
 scraping, cross-user intersection matching, and CSV list export.

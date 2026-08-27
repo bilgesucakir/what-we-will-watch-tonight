@@ -9,7 +9,7 @@ const activeTab = ref('single')
 <template>
   <a
     class="github-link"
-    href="https://github.com/bilgesucakir/watchlist-intersector"
+    href="https://github.com/bilgesucakir/what-we-will-watch-tonight"
     target="_blank"
     rel="noopener noreferrer"
   >

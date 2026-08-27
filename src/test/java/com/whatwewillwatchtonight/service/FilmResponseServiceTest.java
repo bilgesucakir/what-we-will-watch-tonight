@@ -1,7 +1,7 @@
-package com.watchlistintersector.service;
+package com.whatwewillwatchtonight.service;
 
-import com.watchlistintersector.controller.dto.FilmMatchDto;
-import com.watchlistintersector.model.Film;
+import com.whatwewillwatchtonight.controller.dto.FilmMatchDto;
+import com.whatwewillwatchtonight.model.Film;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

@@ -11,10 +11,10 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.watchlistintersector</groupId>
-    <artifactId>watchlist-intersector</artifactId>
+    <groupId>com.whatwewillwatchtonight</groupId>
+    <artifactId>what-we-will-watch-tonight</artifactId>
     <version>0.1.0</version>
-    <name>watchlist-intersector</name>
+    <name>what-we-will-watch-tonight</name>
     <description>Finds films shared between two Letterboxd users' public watchlists</description>
 
     <properties>

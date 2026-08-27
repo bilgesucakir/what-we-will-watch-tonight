@@ -1,4 +1,4 @@
-package com.watchlistintersector.service;
+package com.whatwewillwatchtonight.service;
 
 /**
  * Result of checking a Letterboxd username without doing a full watchlist

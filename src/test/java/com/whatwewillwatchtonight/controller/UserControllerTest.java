@@ -1,7 +1,7 @@
-package com.watchlistintersector.controller;
+package com.whatwewillwatchtonight.controller;
 
-import com.watchlistintersector.service.LetterboxdScraperService;
-import com.watchlistintersector.service.UsernameCheck;
+import com.whatwewillwatchtonight.service.LetterboxdScraperService;
+import com.whatwewillwatchtonight.service.UsernameCheck;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;

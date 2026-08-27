@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: watchlist-intersector
+    name: what-we-will-watch-tonight
     env: docker
     plan: starter
     healthCheckPath: /
