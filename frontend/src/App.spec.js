@@ -42,7 +42,7 @@ describe('App', () => {
     const wrapper = mount(App)
 
     expect(wrapper.find('.github-link').attributes('href')).toBe(
-      'https://github.com/bilgesucakir/watchlist-intersector'
+      'https://github.com/bilgesucakir/what-we-will-watch-tonight'
     )
   })
 })

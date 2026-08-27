@@ -1,4 +1,4 @@
-package com.watchlistintersector.controller.dto;
+package com.whatwewillwatchtonight.controller.dto;
 
 public record ErrorResponseDto(String error) {
 }

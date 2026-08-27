@@ -1,12 +1,12 @@
-package com.watchlistintersector.controller;
+package com.whatwewillwatchtonight.controller;
 
-import com.watchlistintersector.controller.dto.ErrorResponseDto;
-import com.watchlistintersector.controller.dto.FilmMatchDto;
-import com.watchlistintersector.model.Film;
-import com.watchlistintersector.service.FilmResponseService;
-import com.watchlistintersector.service.LetterboxdScraperService;
-import com.watchlistintersector.service.WatchlistIntersectionService;
-import com.watchlistintersector.service.WatchlistResult;
+import com.whatwewillwatchtonight.controller.dto.ErrorResponseDto;
+import com.whatwewillwatchtonight.controller.dto.FilmMatchDto;
+import com.whatwewillwatchtonight.model.Film;
+import com.whatwewillwatchtonight.service.FilmResponseService;
+import com.whatwewillwatchtonight.service.LetterboxdScraperService;
+import com.whatwewillwatchtonight.service.WatchlistIntersectionService;
+import com.whatwewillwatchtonight.service.WatchlistResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

@@ -1,4 +1,4 @@
-package com.watchlistintersector.config;
+package com.whatwewillwatchtonight.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

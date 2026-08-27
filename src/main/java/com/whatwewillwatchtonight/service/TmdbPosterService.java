@@ -1,4 +1,4 @@
-package com.watchlistintersector.service;
+package com.whatwewillwatchtonight.service;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;

@@ -1,6 +1,6 @@
-package com.watchlistintersector.service;
+package com.whatwewillwatchtonight.service;
 
-import com.watchlistintersector.model.Film;
+import com.whatwewillwatchtonight.model.Film;
 
 import java.util.Set;
 

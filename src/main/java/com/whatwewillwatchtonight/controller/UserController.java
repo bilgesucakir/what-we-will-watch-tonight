@@ -1,9 +1,9 @@
-package com.watchlistintersector.controller;
+package com.whatwewillwatchtonight.controller;
 
-import com.watchlistintersector.controller.dto.ErrorResponseDto;
-import com.watchlistintersector.controller.dto.UsernameCheckDto;
-import com.watchlistintersector.service.LetterboxdScraperService;
-import com.watchlistintersector.service.UsernameCheck;
+import com.whatwewillwatchtonight.controller.dto.ErrorResponseDto;
+import com.whatwewillwatchtonight.controller.dto.UsernameCheckDto;
+import com.whatwewillwatchtonight.service.LetterboxdScraperService;
+import com.whatwewillwatchtonight.service.UsernameCheck;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

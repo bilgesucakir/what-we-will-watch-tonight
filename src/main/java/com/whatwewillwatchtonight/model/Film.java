@@ -1,4 +1,4 @@
-package com.watchlistintersector.model;
+package com.whatwewillwatchtonight.model;
 
 /**
  * A film as it appears on a Letterboxd watchlist.
