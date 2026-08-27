@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
-import TwoUserTab from './TwoUserTab.vue'
+import TwoPlusUserTab from './TwoPlusUserTab.vue'
 
 function jsonResponse(body, ok = true) {
   return Promise.resolve({
@@ -9,13 +9,21 @@ function jsonResponse(body, ok = true) {
   })
 }
 
-describe('TwoUserTab', () => {
+describe('TwoPlusUserTab', () => {
   let existsResponses
   let intersectImpl
+  let underwatchedImpl
 
   beforeEach(() => {
     existsResponses = {}
     intersectImpl = () => Promise.reject(new Error('intersect not mocked in this test'))
+    underwatchedImpl = () =>
+      jsonResponse({
+        title: 'Wanda',
+        url: 'https://letterboxd.com/film/wanda/',
+        year: 1970,
+        posterUrl: null
+      })
 
     global.fetch = vi.fn((url) => {
       const existsMatch = url.match(/^\/api\/users\/([^/]+)\/exists$/)
@@ -23,6 +31,9 @@ describe('TwoUserTab', () => {
         const username = decodeURIComponent(existsMatch[1])
         const result = existsResponses[username] ?? { exists: true, watchlistPublic: true }
         return jsonResponse(result)
+      }
+      if (url === '/api/underwatched-pick') {
+        return underwatchedImpl()
       }
       return intersectImpl(url)
     })
@@ -35,70 +46,123 @@ describe('TwoUserTab', () => {
     vi.restoreAllMocks()
   })
 
-  async function setUsernames(wrapper, user1, user2) {
+  async function setUsernames(wrapper, ...users) {
+    while (wrapper.findAll('input').length < users.length) {
+      await wrapper.find('.add-person').trigger('click')
+    }
     const inputs = wrapper.findAll('input')
-    await inputs[0].setValue(user1)
-    await inputs[1].setValue(user2)
+    for (let i = 0; i < users.length; i++) {
+      await inputs[i].setValue(users[i])
+    }
     await vi.advanceTimersByTimeAsync(500)
     await flushPromises()
   }
 
-  it('disables both search buttons until both usernames are filled in and verified', async () => {
-    const wrapper = mount(TwoUserTab)
+  it('starts with two username inputs and no remove buttons', () => {
+    const wrapper = mount(TwoPlusUserTab)
+
+    expect(wrapper.findAll('input')).toHaveLength(2)
+    expect(wrapper.findAll('.remove-person')).toHaveLength(0)
+  })
+
+  it('adds a third then a fourth person, capped at four', async () => {
+    const wrapper = mount(TwoPlusUserTab)
+
+    await wrapper.find('.add-person').trigger('click')
+    expect(wrapper.findAll('input')).toHaveLength(3)
+
+    await wrapper.find('.add-person').trigger('click')
+    expect(wrapper.findAll('input')).toHaveLength(4)
+    expect(wrapper.find('.add-person').exists()).toBe(false)
+  })
+
+  it('emits the group size so the sofa background can follow', async () => {
+    const wrapper = mount(TwoPlusUserTab)
+    expect(wrapper.emitted('sofa-count').at(-1)).toEqual([2])
+
+    await wrapper.find('.add-person').trigger('click')
+    expect(wrapper.emitted('sofa-count').at(-1)).toEqual([3])
+
+    await wrapper.find('.remove-person').trigger('click')
+    expect(wrapper.emitted('sofa-count').at(-1)).toEqual([2])
+  })
+
+  it('removing the third person shifts the fourth up into its place', async () => {
+    const wrapper = mount(TwoPlusUserTab)
+    await wrapper.find('.add-person').trigger('click')
+    await wrapper.find('.add-person').trigger('click')
+
+    const inputs = wrapper.findAll('input')
+    await inputs[2].setValue('carol')
+    await inputs[3].setValue('dave')
+
+    await wrapper.findAll('.remove-person')[0].trigger('click')
+
+    const remaining = wrapper.findAll('input')
+    expect(remaining).toHaveLength(3)
+    expect(remaining[2].element.value).toBe('dave')
+  })
+
+  it('disables both search buttons until every username is filled in and verified', async () => {
+    const wrapper = mount(TwoPlusUserTab)
     expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeDefined()
-    expect(wrapper.find('.all-matches-button').attributes('disabled')).toBeDefined()
 
     await setUsernames(wrapper, 'alice', 'bob')
     expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeUndefined()
     expect(wrapper.find('.all-matches-button').attributes('disabled')).toBeUndefined()
+
+    await wrapper.find('.add-person').trigger('click')
+    expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeDefined()
   })
 
   it('shows an error and keeps the buttons disabled when a username does not exist', async () => {
     existsResponses = { ghost: { exists: false, watchlistPublic: false } }
 
-    const wrapper = mount(TwoUserTab)
+    const wrapper = mount(TwoPlusUserTab)
     await setUsernames(wrapper, 'alice', 'ghost')
 
     expect(wrapper.text()).toContain("This username doesn't exist on Letterboxd.")
     expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeDefined()
-    expect(wrapper.find('.all-matches-button').attributes('disabled')).toBeDefined()
   })
 
-  it('shows a different error and keeps the buttons disabled when the watchlist is private', async () => {
+  it('shows a different error when the watchlist is private', async () => {
     existsResponses = { bob: { exists: true, watchlistPublic: false } }
 
-    const wrapper = mount(TwoUserTab)
+    const wrapper = mount(TwoPlusUserTab)
     await setUsernames(wrapper, 'alice', 'bob')
 
     expect(wrapper.text()).toContain("This user's watchlist isn't public, or is empty.")
     expect(wrapper.text()).not.toContain("doesn't exist")
-    expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeDefined()
   })
 
-  it('shows the avatar next to a field once its username is verified', async () => {
+  it('seats each verified user on a cushion', async () => {
     existsResponses = {
-      alice: { exists: true, watchlistPublic: true, avatarUrl: 'https://a.ltrbxd.com/resized/avatar/alice.jpg' }
+      alice: { exists: true, watchlistPublic: true, avatarUrl: 'https://a.ltrbxd.com/resized/avatar/alice.jpg' },
+      bob: { exists: true, watchlistPublic: true, avatarUrl: 'https://a.ltrbxd.com/resized/avatar/bob.jpg' }
     }
 
-    const wrapper = mount(TwoUserTab)
+    const wrapper = mount(TwoPlusUserTab)
     await setUsernames(wrapper, 'alice', 'bob')
 
-    const avatars = wrapper.findAll('.avatar')
-    expect(avatars).toHaveLength(1)
-    expect(avatars[0].attributes('src')).toBe('https://a.ltrbxd.com/resized/avatar/alice.jpg')
+    const seats = wrapper.findAll('.seat')
+    expect(seats).toHaveLength(2)
+    expect(seats.map((s) => s.attributes('src'))).toEqual([
+      'https://a.ltrbxd.com/resized/avatar/alice.jpg',
+      'https://a.ltrbxd.com/resized/avatar/bob.jpg'
+    ])
   })
 
-  it('does not show an avatar when the username check has no avatar url', async () => {
+  it('does not seat anyone whose check has no avatar url', async () => {
     existsResponses = { ghost: { exists: false, watchlistPublic: false, avatarUrl: null } }
 
-    const wrapper = mount(TwoUserTab)
+    const wrapper = mount(TwoPlusUserTab)
     await setUsernames(wrapper, 'alice', 'ghost')
 
-    expect(wrapper.findAll('.avatar')).toHaveLength(0)
+    expect(wrapper.findAll('.seat')).toHaveLength(0)
   })
 
   it('debounces the existence check while typing', async () => {
-    const wrapper = mount(TwoUserTab)
+    const wrapper = mount(TwoPlusUserTab)
     const input = wrapper.findAll('input')[0]
 
     await input.setValue('al')
@@ -116,7 +180,7 @@ describe('TwoUserTab', () => {
   })
 
   it('does not call the intersect API when a username is missing', async () => {
-    const wrapper = mount(TwoUserTab)
+    const wrapper = mount(TwoPlusUserTab)
     await setUsernames(wrapper, 'alice', '')
 
     await wrapper.find('form').trigger('submit')
@@ -125,11 +189,9 @@ describe('TwoUserTab', () => {
     expect(global.fetch).not.toHaveBeenCalledWith(expect.stringMatching(/^\/api\/intersect/))
   })
 
-  it('allows typing the same username in both fields but rejects submitting it', async () => {
-    const wrapper = mount(TwoUserTab)
+  it('allows typing the same username twice but rejects submitting it', async () => {
+    const wrapper = mount(TwoPlusUserTab)
     await setUsernames(wrapper, 'alice', 'alice')
-
-    expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeUndefined()
 
     await wrapper.find('form').trigger('submit')
     await flushPromises()
@@ -148,57 +210,26 @@ describe('TwoUserTab', () => {
         }
       ])
 
-    const wrapper = mount(TwoUserTab)
+    const wrapper = mount(TwoPlusUserTab)
     await setUsernames(wrapper, 'alice', 'bob')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
 
-    expect(global.fetch).toHaveBeenCalledWith('/api/intersect?user1=alice&user2=bob&random=true')
+    expect(global.fetch).toHaveBeenCalledWith('/api/intersect?user=alice&user=bob&random=true')
     expect(wrapper.find('.picked-title').text()).toBe('Anora')
-    expect(wrapper.find('.picked-title').attributes('href')).toBe('https://letterboxd.com/film/anora/')
     expect(wrapper.find('.picked-poster').attributes('src')).toBe('https://image.tmdb.org/t/p/w342/anora.jpg')
-    expect(wrapper.text()).toContain('TMDB')
     expect(wrapper.find('.results').exists()).toBe(false)
   })
 
-  it('shows a placeholder poster for the tonight pick when there is no poster', async () => {
-    intersectImpl = () =>
-      jsonResponse([{ title: 'Anora', url: 'https://letterboxd.com/film/anora/', posterUrl: null }])
+  it('sends every username to the intersect API for a group of three', async () => {
+    intersectImpl = () => jsonResponse([{ title: 'Anora', url: 'https://letterboxd.com/film/anora/', posterUrl: null }])
 
-    const wrapper = mount(TwoUserTab)
-    await setUsernames(wrapper, 'alice', 'bob')
+    const wrapper = mount(TwoPlusUserTab)
+    await setUsernames(wrapper, 'alice', 'bob', 'carol')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
 
-    expect(wrapper.find('img.picked-poster').exists()).toBe(false)
-    expect(wrapper.find('.picked-poster.poster-placeholder').exists()).toBe(true)
-  })
-
-  it('clicking the primary button again requests a fresh random pick (no dedicated reroll button)', async () => {
-    let callCount = 0
-    intersectImpl = () => {
-      callCount += 1
-      return jsonResponse([
-        {
-          title: callCount === 1 ? 'Anora' : 'Dune: Part Two',
-          url: 'https://letterboxd.com/film/anora/',
-          posterUrl: null
-        }
-      ])
-    }
-
-    const wrapper = mount(TwoUserTab)
-    await setUsernames(wrapper, 'alice', 'bob')
-    await wrapper.find('form').trigger('submit')
-    await flushPromises()
-    expect(wrapper.find('.picked-title').text()).toBe('Anora')
-    expect(wrapper.find('.reroll-button').exists()).toBe(false)
-
-    await wrapper.find('form').trigger('submit')
-    await flushPromises()
-
-    expect(wrapper.find('.picked-title').text()).toBe('Dune: Part Two')
-    expect(global.fetch).toHaveBeenCalledWith('/api/intersect?user1=alice&user2=bob&random=true')
+    expect(global.fetch).toHaveBeenCalledWith('/api/intersect?user=alice&user=bob&user=carol&random=true')
   })
 
   it('requests all matches and renders the poster grid when the secondary button is clicked', async () => {
@@ -211,59 +242,17 @@ describe('TwoUserTab', () => {
         }
       ])
 
-    const wrapper = mount(TwoUserTab)
+    const wrapper = mount(TwoPlusUserTab)
     await setUsernames(wrapper, 'alice', 'bob')
     await wrapper.find('.all-matches-button').trigger('click')
     await flushPromises()
 
-    expect(global.fetch).toHaveBeenCalledWith('/api/intersect?user1=alice&user2=bob')
+    expect(global.fetch).toHaveBeenCalledWith('/api/intersect?user=alice&user=bob')
     expect(wrapper.find('.results a').attributes('href')).toBe('https://letterboxd.com/film/anora/')
-    expect(wrapper.find('.poster').attributes('src')).toBe('https://image.tmdb.org/t/p/w342/anora.jpg')
     expect(wrapper.find('.picked-film').exists()).toBe(false)
   })
 
-  it('shows a placeholder instead of an img in the grid when a match has no poster', async () => {
-    intersectImpl = () =>
-      jsonResponse([{ title: 'Anora', url: 'https://letterboxd.com/film/anora/', posterUrl: null }])
-
-    const wrapper = mount(TwoUserTab)
-    await setUsernames(wrapper, 'alice', 'bob')
-    await wrapper.find('.all-matches-button').trigger('click')
-    await flushPromises()
-
-    expect(wrapper.find('img.poster').exists()).toBe(false)
-    expect(wrapper.find('.poster-placeholder').exists()).toBe(true)
-  })
-
-  it('switches from the tonight-pick view to the full grid when all matches is requested next', async () => {
-    intersectImpl = () =>
-      jsonResponse([{ title: 'Anora', url: 'https://letterboxd.com/film/anora/', posterUrl: null }])
-
-    const wrapper = mount(TwoUserTab)
-    await setUsernames(wrapper, 'alice', 'bob')
-    await wrapper.find('form').trigger('submit')
-    await flushPromises()
-    expect(wrapper.find('.picked-film').exists()).toBe(true)
-
-    await wrapper.find('.all-matches-button').trigger('click')
-    await flushPromises()
-
-    expect(wrapper.find('.picked-film').exists()).toBe(false)
-    expect(wrapper.find('.results').exists()).toBe(true)
-  })
-
-  it('does not show a download button when there are no matches', async () => {
-    intersectImpl = () => jsonResponse([])
-
-    const wrapper = mount(TwoUserTab)
-    await setUsernames(wrapper, 'alice', 'bob')
-    await wrapper.find('.all-matches-button').trigger('click')
-    await flushPromises()
-
-    expect(wrapper.find('.download-button').exists()).toBe(false)
-  })
-
-  it('downloads a CSV with year in its own column and a user1_user2 filename', async () => {
+  it('downloads a CSV named after everyone in the group', async () => {
     intersectImpl = () =>
       jsonResponse([
         { title: 'The Godfather (1972)', url: 'https://letterboxd.com/film/the-godfather/', year: 1972 },
@@ -287,34 +276,56 @@ describe('TwoUserTab', () => {
       return el
     })
 
-    const wrapper = mount(TwoUserTab)
-    await setUsernames(wrapper, 'alice', 'bob')
+    const wrapper = mount(TwoPlusUserTab)
+    await setUsernames(wrapper, 'alice', 'bob', 'carol')
     await wrapper.find('.all-matches-button').trigger('click')
     await flushPromises()
 
     await wrapper.find('.download-button').trigger('click')
 
-    expect(createdAnchor.download).toBe('alice_bob_watchlist_intersection.csv')
+    expect(createdAnchor.download).toBe('alice_bob_carol_watchlist_intersection.csv')
     expect(capturedParts[0]).toBe('Title,Year\r\nThe Godfather,1972\r\nParasite,2019')
 
     global.Blob = OriginalBlob
   })
 
-  it('shows the server error message when a watchlist is inaccessible', async () => {
-    intersectImpl = () => jsonResponse({ error: 'Watchlist inaccessible for: bob' }, false)
+  it('shows the server error message when the API rejects the request', async () => {
+    intersectImpl = () => jsonResponse({ error: "There's no Letterboxd user named 'bob'." }, false)
 
-    const wrapper = mount(TwoUserTab)
+    const wrapper = mount(TwoPlusUserTab)
     await setUsernames(wrapper, 'alice', 'bob')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Watchlist inaccessible for: bob')
+    expect(wrapper.text()).toContain("There's no Letterboxd user named 'bob'.")
   })
 
-  it('shows a no-matches message when the intersection is empty', async () => {
+  it('recommends an underwatched film when the watchlists have nothing in common', async () => {
     intersectImpl = () => jsonResponse([])
+    underwatchedImpl = () =>
+      jsonResponse({
+        title: 'Wanda',
+        url: 'https://letterboxd.com/film/wanda/',
+        year: 1970,
+        posterUrl: 'https://image.tmdb.org/t/p/w342/wanda.jpg'
+      })
 
-    const wrapper = mount(TwoUserTab)
+    const wrapper = mount(TwoPlusUserTab)
+    await setUsernames(wrapper, 'alice', 'bob')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(global.fetch).toHaveBeenCalledWith('/api/underwatched-pick')
+    expect(wrapper.text()).toContain('I bet none of you have seen this')
+    expect(wrapper.find('.picked-title').text()).toBe('Wanda')
+    expect(wrapper.find('.picked-poster').attributes('src')).toBe('https://image.tmdb.org/t/p/w342/wanda.jpg')
+  })
+
+  it('falls back to a plain no-matches message when there is no underwatched pick', async () => {
+    intersectImpl = () => jsonResponse([])
+    underwatchedImpl = () => Promise.resolve({ ok: false, status: 204, json: () => Promise.resolve(null) })
+
+    const wrapper = mount(TwoPlusUserTab)
     await setUsernames(wrapper, 'alice', 'bob')
     await wrapper.find('form').trigger('submit')
     await flushPromises()

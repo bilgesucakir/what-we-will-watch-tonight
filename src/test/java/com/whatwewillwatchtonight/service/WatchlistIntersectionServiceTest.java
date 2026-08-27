@@ -21,9 +21,32 @@ class WatchlistIntersectionServiceTest {
                 new Film("dune-part-two", "Dune: Part Two (2024)", 2024),
                 new Film("the-substance", "The Substance (2024)", 2024)));
 
-        List<Film> matches = service.intersect(result1, result2);
+        List<Film> matches = service.intersect(List.of(result1, result2));
 
         assertThat(matches).extracting(Film::slug).containsExactly("dune-part-two");
+    }
+
+    @Test
+    void returnsOnlyFilmsPresentOnEveryWatchlistWhenThereAreMoreThanTwo() {
+        WatchlistResult alice = WatchlistResult.of("alice", Set.of(
+                new Film("dune-part-two", "Dune: Part Two (2024)", 2024),
+                new Film("anora", "Anora (2024)", 2024),
+                new Film("the-substance", "The Substance (2024)", 2024)));
+        WatchlistResult bob = WatchlistResult.of("bob", Set.of(
+                new Film("dune-part-two", "Dune: Part Two (2024)", 2024),
+                new Film("anora", "Anora (2024)", 2024)));
+        WatchlistResult carol = WatchlistResult.of("carol", Set.of(
+                new Film("anora", "Anora (2024)", 2024),
+                new Film("the-substance", "The Substance (2024)", 2024)));
+
+        List<Film> matches = service.intersect(List.of(alice, bob, carol));
+
+        assertThat(matches).extracting(Film::slug).containsExactly("anora");
+    }
+
+    @Test
+    void returnsEmptyListWhenGivenNoWatchlists() {
+        assertThat(service.intersect(List.of())).isEmpty();
     }
 
     @Test
@@ -33,7 +56,7 @@ class WatchlistIntersectionServiceTest {
         WatchlistResult result2 = WatchlistResult.of("bob", Set.of(
                 new Film("anora", "Anora (2024)", 2024)));
 
-        assertThat(service.intersect(result1, result2)).isEmpty();
+        assertThat(service.intersect(List.of(result1, result2))).isEmpty();
     }
 
     @Test
@@ -43,7 +66,7 @@ class WatchlistIntersectionServiceTest {
         WatchlistResult result2 = WatchlistResult.of("bob", Set.of(
                 new Film("dune-part-two", "Different Title", 1999)));
 
-        List<Film> matches = service.intersect(result1, result2);
+        List<Film> matches = service.intersect(List.of(result1, result2));
 
         assertThat(matches).containsExactly(new Film("dune-part-two", "Dune: Part Two (2024)", 2024));
     }

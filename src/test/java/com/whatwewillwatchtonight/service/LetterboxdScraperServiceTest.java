@@ -12,7 +12,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class LetterboxdScraperServiceTest {
 
-    private static final String ALICE_AVATAR_URL = "https://a.ltrbxd.com/resized/avatar/alice.jpg";
+    private static final String ALICE_AVATAR_URL =
+            "https://a.ltrbxd.com/resized/avatar/upload/1/2/3/shard/avtr-0-48-0-48-crop.jpg?v=abc123";
+    private static final String ALICE_AVATAR_URL_UPGRADED =
+            "https://a.ltrbxd.com/resized/avatar/upload/1/2/3/shard/avtr-0-220-0-220-crop.jpg?v=abc123";
 
     private static final String PAGE_1_WITH_PAGINATION = """
             <html><body>
@@ -148,19 +151,21 @@ class LetterboxdScraperServiceTest {
     }
 
     @Test
-    void treatsPageWithNoFilmTilesAsInaccessible() {
+    void treatsPageWithNoFilmTilesAsAPrivateOrEmptyWatchlist() {
         WatchlistResult result = scraperService.fetchWatchlist("bob");
 
         assertThat(result.accessible()).isFalse();
         assertThat(result.films()).isEmpty();
+        assertThat(result.reason()).isEqualTo(WatchlistResult.Reason.PRIVATE_OR_EMPTY);
     }
 
     @Test
-    void treatsFailedRequestAsInaccessible() {
+    void treatsA404OnTheWatchlistPageAsANonexistentUser() {
         WatchlistResult result = scraperService.fetchWatchlist("ghost");
 
         assertThat(result.accessible()).isFalse();
         assertThat(result.films()).isEmpty();
+        assertThat(result.reason()).isEqualTo(WatchlistResult.Reason.NONEXISTENT);
     }
 
     @Test
@@ -172,10 +177,29 @@ class LetterboxdScraperServiceTest {
     }
 
     @Test
-    void checkUsernameExtractsAvatarUrlFromProfileHeader() {
+    void checkUsernameExtractsAvatarUrlFromProfileHeaderAndUpgradesItsResolution() {
         UsernameCheck check = scraperService.checkUsername("alice");
 
-        assertThat(check.avatarUrl()).isEqualTo(ALICE_AVATAR_URL);
+        assertThat(check.avatarUrl()).isEqualTo(ALICE_AVATAR_URL_UPGRADED);
+    }
+
+    @Test
+    void checkUsernameLeavesAnUnrecognisedAvatarUrlUntouched() {
+        String plainUrl = "https://example.com/avatar.png";
+        server.createContext("/plainavatar/watchlist/", exchange -> respond(exchange, 200, """
+                <html><body>
+                  <section class="profile-header js-profile-header">
+                    <a class="avatar" href="/plainavatar/"><img src="%s" alt="x" /></a>
+                  </section>
+                  <div data-item-slug="dune-part-two" class="poster">
+                    <img alt="Dune: Part Two" src="empty-poster.jpg"/>
+                  </div>
+                </body></html>
+                """.formatted(plainUrl)));
+
+        UsernameCheck check = scraperService.checkUsername("plainavatar");
+
+        assertThat(check.avatarUrl()).isEqualTo(plainUrl);
     }
 
     @Test

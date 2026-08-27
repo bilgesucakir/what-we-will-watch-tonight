@@ -71,7 +71,7 @@ describe('SingleUserTab', () => {
     expect(wrapper.text()).not.toContain("doesn't exist")
   })
 
-  it('shows the avatar once the username is verified', async () => {
+  it('seats the avatar on the armchair once the username is verified', async () => {
     existsResponses = {
       alice: { exists: true, watchlistPublic: true, avatarUrl: 'https://a.ltrbxd.com/resized/avatar/alice.jpg' }
     }
@@ -79,7 +79,13 @@ describe('SingleUserTab', () => {
     const wrapper = mount(SingleUserTab)
     await setUsername(wrapper, 'alice')
 
-    expect(wrapper.find('.avatar').attributes('src')).toBe('https://a.ltrbxd.com/resized/avatar/alice.jpg')
+    expect(wrapper.find('.seat--solo').attributes('src')).toBe('https://a.ltrbxd.com/resized/avatar/alice.jpg')
+  })
+
+  it('does not seat anyone until the username is verified', () => {
+    const wrapper = mount(SingleUserTab)
+
+    expect(wrapper.findAll('.seat')).toHaveLength(0)
   })
 
   it('the primary action requests a single random pick from the watchlist endpoint', async () => {

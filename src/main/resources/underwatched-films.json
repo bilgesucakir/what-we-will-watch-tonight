@@ -1,0 +1,502 @@
+[
+  {
+    "slug": "gintama-the-very-final",
+    "title": "Gintama: The Very Final",
+    "year": 2021
+  },
+  {
+    "slug": "war-and-peace-1968",
+    "title": "War and Peace",
+    "year": 1968
+  },
+  {
+    "slug": "revue-starlight-the-movie",
+    "title": "Revue Starlight: The Movie",
+    "year": 2021
+  },
+  {
+    "slug": "the-fifth-seal",
+    "title": "The Fifth Seal",
+    "year": 1976
+  },
+  {
+    "slug": "la-commune-paris-1871",
+    "title": "La Commune (Paris, 1871)",
+    "year": 2000
+  },
+  {
+    "slug": "the-best-of-youth",
+    "title": "The Best of Youth",
+    "year": 2003
+  },
+  {
+    "slug": "eureka-2000",
+    "title": "Eureka",
+    "year": 2000
+  },
+  {
+    "slug": "samurai-rebellion",
+    "title": "Samurai Rebellion",
+    "year": 1967
+  },
+  {
+    "slug": "the-company-of-strangers",
+    "title": "The Company of Strangers",
+    "year": 1990
+  },
+  {
+    "slug": "kadaisi-vivasayi",
+    "title": "Kadaisi Vivasayi",
+    "year": 2021
+  },
+  {
+    "slug": "edvard-munch",
+    "title": "Edvard Munch",
+    "year": 1974
+  },
+  {
+    "slug": "death-of-yazdgerd",
+    "title": "Death of Yazdgerd",
+    "year": 1982
+  },
+  {
+    "slug": "devils-on-the-doorstep",
+    "title": "Devils on the Doorstep",
+    "year": 2000
+  },
+  {
+    "slug": "the-disappearance-of-haruhi-suzumiya",
+    "title": "The Disappearance of Haruhi Suzumiya",
+    "year": 2010
+  },
+  {
+    "slug": "the-new-land",
+    "title": "The New Land",
+    "year": 1972
+  },
+  {
+    "slug": "nayakan",
+    "title": "Nayakan",
+    "year": 1987
+  },
+  {
+    "slug": "the-big-city",
+    "title": "The Big City",
+    "year": 1963
+  },
+  {
+    "slug": "voices-through-time",
+    "title": "Voices Through Time",
+    "year": 1996
+  },
+  {
+    "slug": "anbe-sivam",
+    "title": "Anbe Sivam",
+    "year": 2003
+  },
+  {
+    "slug": "happy-hour-2015-1",
+    "title": "Happy Hour",
+    "year": 2015
+  },
+  {
+    "slug": "make-way-for-tomorrow",
+    "title": "Make Way for Tomorrow",
+    "year": 1937
+  },
+  {
+    "slug": "club-kid",
+    "title": "Club Kid",
+    "year": 2026
+  },
+  {
+    "slug": "manila-in-the-claws-of-light",
+    "title": "Manila in the Claws of Light",
+    "year": 1975
+  },
+  {
+    "slug": "napoleon",
+    "title": "Napoleon",
+    "year": 1927
+  },
+  {
+    "slug": "tokyo-twilight",
+    "title": "Tokyo Twilight",
+    "year": 1957
+  },
+  {
+    "slug": "virumaandi",
+    "title": "Virumaandi",
+    "year": 2004
+  },
+  {
+    "slug": "demons-1971",
+    "title": "Demons",
+    "year": 1971
+  },
+  {
+    "slug": "the-weeping-meadow",
+    "title": "The Weeping Meadow",
+    "year": 2004
+  },
+  {
+    "slug": "the-message-1976",
+    "title": "The Message",
+    "year": 1976
+  },
+  {
+    "slug": "rio-northern-zone",
+    "title": "Rio, Northern Zone",
+    "year": 1957
+  },
+  {
+    "slug": "the-shop-on-main-street",
+    "title": "The Shop on Main Street",
+    "year": 1965
+  },
+  {
+    "slug": "memories-of-matsuko",
+    "title": "Memories of Matsuko",
+    "year": 2006
+  },
+  {
+    "slug": "batang-west-side",
+    "title": "Batang West Side",
+    "year": 2001
+  },
+  {
+    "slug": "satluj-2026",
+    "title": "Satluj",
+    "year": 2026
+  },
+  {
+    "slug": "evolution-of-a-filipino-family",
+    "title": "Evolution of a Filipino Family",
+    "year": 2004
+  },
+  {
+    "slug": "space-runaway-ideon-be-invoked",
+    "title": "Space Runaway Ideon: Be Invoked",
+    "year": 1982
+  },
+  {
+    "slug": "the-emigrants",
+    "title": "The Emigrants",
+    "year": 1971
+  },
+  {
+    "slug": "the-given-word",
+    "title": "The Given Word",
+    "year": 1962
+  },
+  {
+    "slug": "yearning",
+    "title": "Yearning",
+    "year": 1964
+  },
+  {
+    "slug": "roots-1987",
+    "title": "Roots",
+    "year": 1987
+  },
+  {
+    "slug": "pariyerum-perumal",
+    "title": "Pariyerum Perumal",
+    "year": 2018
+  },
+  {
+    "slug": "blue-mountains-or-an-unbelievable-story",
+    "title": "Blue Mountains, or an Unbelievable Story",
+    "year": 1983
+  },
+  {
+    "slug": "pastoral-to-die-in-the-country",
+    "title": "Pastoral: To Die in the Country",
+    "year": 1974
+  },
+  {
+    "slug": "revolutionary-girl-utena-the-movie",
+    "title": "Revolutionary Girl Utena: The Movie",
+    "year": 1999
+  },
+  {
+    "slug": "early-summer",
+    "title": "Early Summer",
+    "year": 1951
+  },
+  {
+    "slug": "thalapathi",
+    "title": "Thalapathi",
+    "year": 1991
+  },
+  {
+    "slug": "die-nibelungen-siegfried",
+    "title": "Die Nibelungen: Siegfried",
+    "year": 1924
+  },
+  {
+    "slug": "all-thats-left-of-you",
+    "title": "All That's Left of You",
+    "year": 2025
+  },
+  {
+    "slug": "the-life-of-oharu",
+    "title": "The Life of Oharu",
+    "year": 1952
+  },
+  {
+    "slug": "marketa-lazarova",
+    "title": "Marketa Lazarová",
+    "year": 1967
+  },
+  {
+    "slug": "la-belle-noiseuse",
+    "title": "La Belle Noiseuse",
+    "year": 1991
+  },
+  {
+    "slug": "from-what-is-before",
+    "title": "From What Is Before",
+    "year": 2014
+  },
+  {
+    "slug": "day-of-wrath",
+    "title": "Day of Wrath",
+    "year": 1943
+  },
+  {
+    "slug": "pyaasa",
+    "title": "Pyaasa",
+    "year": 1957
+  },
+  {
+    "slug": "when-a-woman-ascends-the-stairs",
+    "title": "When a Woman Ascends the Stairs",
+    "year": 1960
+  },
+  {
+    "slug": "pretty-village-pretty-flame",
+    "title": "Pretty Village, Pretty Flame",
+    "year": 1996
+  },
+  {
+    "slug": "patlabor-2-the-movie",
+    "title": "Patlabor 2: The Movie",
+    "year": 1993
+  },
+  {
+    "slug": "the-heiress",
+    "title": "The Heiress",
+    "year": 1949
+  },
+  {
+    "slug": "so-long-my-son",
+    "title": "So Long, My Son",
+    "year": 2019
+  },
+  {
+    "slug": "haru",
+    "title": "Haru",
+    "year": 1996
+  },
+  {
+    "slug": "charulata",
+    "title": "Charulata",
+    "year": 1964
+  },
+  {
+    "slug": "the-garden-of-sinners-paradox-spiral",
+    "title": "The Garden of Sinners: Paradox Spiral",
+    "year": 2008
+  },
+  {
+    "slug": "moving-1993",
+    "title": "Moving",
+    "year": 1993
+  },
+  {
+    "slug": "jacquot-de-nantes",
+    "title": "Jacquot de Nantes",
+    "year": 1991
+  },
+  {
+    "slug": "welcome-back-mr-mcdonald",
+    "title": "Welcome Back, Mr. McDonald",
+    "year": 1997
+  },
+  {
+    "slug": "iddaru",
+    "title": "Iruvar",
+    "year": 1997
+  },
+  {
+    "slug": "gintama-the-final-chapter-be-forever-yorozuya",
+    "title": "Gintama: The Final Chapter - Be Forever Yorozuya",
+    "year": 2013
+  },
+  {
+    "slug": "matewan",
+    "title": "Matewan",
+    "year": 1987
+  },
+  {
+    "slug": "moral",
+    "title": "Moral",
+    "year": 1982
+  },
+  {
+    "slug": "riceboy-sleeps",
+    "title": "Riceboy Sleeps",
+    "year": 2022
+  },
+  {
+    "slug": "kit-kat",
+    "title": "Kit Kat",
+    "year": 1991
+  },
+  {
+    "slug": "sunny-2011",
+    "title": "Sunny",
+    "year": 2011
+  },
+  {
+    "slug": "ulysses-gaze",
+    "title": "Ulysses' Gaze",
+    "year": 1995
+  },
+  {
+    "slug": "the-naked-island",
+    "title": "The Naked Island",
+    "year": 1960
+  },
+  {
+    "slug": "father-of-a-soldier",
+    "title": "Father of a Soldier",
+    "year": 1965
+  },
+  {
+    "slug": "the-mother-and-the-whore",
+    "title": "The Mother and the Whore",
+    "year": 1973
+  },
+  {
+    "slug": "portrait-of-a-young-girl-at-the-end-of-the-60s-in-brussels",
+    "title": "Portrait of a Young Girl at the End of the 60s in Brussels",
+    "year": 1994
+  },
+  {
+    "slug": "cosy-dens",
+    "title": "Cosy Dens",
+    "year": 1999
+  },
+  {
+    "slug": "el-sur",
+    "title": "El Sur",
+    "year": 1983
+  },
+  {
+    "slug": "repentance",
+    "title": "Repentance",
+    "year": 1984
+  },
+  {
+    "slug": "the-legend-of-hei-2",
+    "title": "The Legend of Hei 2",
+    "year": 2025
+  },
+  {
+    "slug": "dead-mans-letters",
+    "title": "Dead Man's Letters",
+    "year": 1986
+  },
+  {
+    "slug": "leila-and-the-wolves",
+    "title": "Leila and the Wolves",
+    "year": 1984
+  },
+  {
+    "slug": "crayon-shin-chan-the-storm-called-the-adult",
+    "title": "Crayon Shin-chan: The Storm Called: The Adult Empire Strikes Back",
+    "year": 2001
+  },
+  {
+    "slug": "twenty-four-eyes",
+    "title": "Twenty-Four Eyes",
+    "year": 1954
+  },
+  {
+    "slug": "kireedam-1989",
+    "title": "Kireedam",
+    "year": 1989
+  },
+  {
+    "slug": "a-story-from-chikamatsu",
+    "title": "A Story from Chikamatsu",
+    "year": 1954
+  },
+  {
+    "slug": "nostos-the-return",
+    "title": "Nostos: The Return",
+    "year": 1989
+  },
+  {
+    "slug": "the-travelling-players",
+    "title": "The Travelling Players",
+    "year": 1975
+  },
+  {
+    "slug": "il-posto",
+    "title": "Il Posto",
+    "year": 1961
+  },
+  {
+    "slug": "they-dont-wear-black-tie",
+    "title": "They Don't Wear Black Tie",
+    "year": 1981
+  },
+  {
+    "slug": "the-time-that-remains",
+    "title": "The Time That Remains",
+    "year": 2009
+  },
+  {
+    "slug": "ballad-of-a-soldier",
+    "title": "Ballad of a Soldier",
+    "year": 1959
+  },
+  {
+    "slug": "the-burmese-harp",
+    "title": "The Burmese Harp",
+    "year": 1956
+  },
+  {
+    "slug": "still-life-1974",
+    "title": "Still Life",
+    "year": 1974
+  },
+  {
+    "slug": "the-hero-1966",
+    "title": "The Hero",
+    "year": 1966
+  },
+  {
+    "slug": "c-o-kancharapalem",
+    "title": "C/o Kancharapalem",
+    "year": 2018
+  },
+  {
+    "slug": "zoku-owarimonogatari",
+    "title": "Zoku Owarimonogatari",
+    "year": 2018
+  },
+  {
+    "slug": "canoa-a-shameful-memory",
+    "title": "Canoa: A Shameful Memory",
+    "year": 1975
+  },
+  {
+    "slug": "kaguya-sama-love-is-war-the-first-kiss-that-never-ends",
+    "title": "Kaguya-sama: Love Is War -The First Kiss That Never Ends-",
+    "year": 2022
+  }
+]

@@ -13,6 +13,12 @@ export default defineConfig({
     }
   },
   test: {
-    environment: 'jsdom'
+    environment: 'jsdom',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      include: ['src/**/*.{js,vue}'],
+      exclude: ['src/main.js', 'src/**/*.spec.js']
+    }
   }
 })

@@ -1,7 +1,7 @@
 package com.whatwewillwatchtonight.controller;
 
-import com.whatwewillwatchtonight.controller.dto.ErrorResponseDto;
 import com.whatwewillwatchtonight.controller.dto.UsernameCheckDto;
+import com.whatwewillwatchtonight.controller.error.BlankUsernameException;
 import com.whatwewillwatchtonight.service.LetterboxdScraperService;
 import com.whatwewillwatchtonight.service.UsernameCheck;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,9 +33,10 @@ public class UserController {
     @ApiResponse(responseCode = "200", description = "The check result (existence is reflected in the body, not the status code)")
     @ApiResponse(responseCode = "400", description = "The username is blank")
     @GetMapping("/api/users/{username}/exists")
-    public ResponseEntity<?> exists(@Parameter(description = "Letterboxd username") @PathVariable String username) {
+    public ResponseEntity<UsernameCheckDto> exists(
+            @Parameter(description = "Letterboxd username") @PathVariable String username) {
         if (username.isBlank()) {
-            return ResponseEntity.badRequest().body(new ErrorResponseDto("username is required."));
+            throw new BlankUsernameException();
         }
 
         UsernameCheck check = scraperService.checkUsername(username);

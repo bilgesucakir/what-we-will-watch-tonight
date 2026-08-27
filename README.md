@@ -7,8 +7,8 @@ Scrapes public Letterboxd watchlist pages with Jsoup and helps you pick
 something to watch, in two modes (two tabs in the UI):
 
 - **Just Me** — a random pick from one person's own watchlist
-- **Me & a Friend** — a random pick from what two people's watchlists have
-  in common, or the full overlap as a browsable list
+- **Us** — a random pick from what a group's watchlists have in common
+  (2 to 4 people), or the full overlap as a browsable list
 
 Both modes hand back a single random pick by default — for when you just
 want an answer, not a list to argue about — with the full film list still
@@ -17,17 +17,25 @@ list.
 
 ## Features
 
-- **Random pick, single or shared** — the primary action in both tabs:
-  picks one random film (from one watchlist, or from the overlap of two)
-  and shows it front and center, with a poster from TMDB where one's
-  found. Only the picked film gets a poster lookup
+- **Random pick, solo or group** — the primary action in both tabs: picks
+  one random film (from one watchlist, or from the overlap of 2–4) and
+  shows it front and center, with a poster from TMDB where one's found.
+  Only the picked film gets a poster lookup
+- **2–4 people in the "Us" tab** — start with two username fields, "**+ Add
+  person**" for a third and fourth (each removable inline); the sofa in the
+  background grows with the group and each verified user's avatar takes a
+  cushion
 - **"Return all films"** — a smaller secondary action in both tabs for
   browsing the full list as a poster grid, sorted alphabetically, each
   linking to its Letterboxd page
+- **Nothing in common?** — if a group's watchlists don't overlap at all,
+  the app hands back a random pick from a curated list of underwatched
+  films instead (seeded from Letterboxd's
+  [Top 100 Underseen Films](https://letterboxd.com/official/list/top-100-underseen-films/),
+  kept static in `src/main/resources/underwatched-films.json`)
 - **Live username validation** — as you type, checks whether each username
-  exists on Letterboxd and whether its watchlist is public, with the
-  buttons staying disabled until ready, and shows the user's avatar once
-  verified
+  exists on Letterboxd and whether its watchlist is public, keeping the
+  buttons disabled until ready
 - **CSV export** — from the full-list view, download the results as CSV,
   formatted to import cleanly into a new Letterboxd list
 
@@ -90,14 +98,30 @@ cd frontend
 npm test
 ```
 
+### Coverage
+
+`mvn test` also writes a JaCoCo report to
+**`target/site/jacoco/index.html`** (backend, ~91% line / ~86% branch).
+
+For the frontend:
+
+```bash
+cd frontend
+npm run test:coverage
+```
+
+writes a v8 report to **`frontend/coverage/index.html`** (~99% line).
+
 ## API
 
 Interactive docs (Swagger UI) are served at `/swagger-ui.html` whenever the
 app is running; the raw OpenAPI spec is at `/v3/api-docs`.
 
-### `GET /api/intersect?user1={username}&user2={username}`
+### `GET /api/intersect?user={username}&user={username}[&user=…]`
 
-Returns `200` with a JSON array of matches, sorted alphabetically by title:
+Pass the `user` parameter **2 to 4 times**. Returns `200` with a JSON array
+of the films on *every* one of those watchlists, sorted alphabetically by
+title:
 
 ```json
 [
@@ -121,14 +145,17 @@ parameter — every call (including "pick again") is an independent,
 genuinely random draw from the full overlap, so it can occasionally repeat
 the previous pick.
 
-Returns `400` with `{ "error": "..." }` if either watchlist is private or
-the username doesn't exist.
+Returns `400` with `{ "error": "..." }`, one distinct message per problem:
+
+- not between 2 and 4 usernames
+- a username is blank
+- a user doesn't exist on Letterboxd
+- a watchlist is private or empty
 
 ### `GET /api/watchlist?user={username}`
 
 Single-user counterpart to `/api/intersect` — same response shape, same
-`&random=true` behavior, but for one person's own watchlist instead of an
-overlap between two:
+`&random=true` behavior, but for one person's own watchlist:
 
 ```json
 [
@@ -141,11 +168,20 @@ overlap between two:
 ]
 ```
 
-Returns `400` with `{ "error": "..." }` if the watchlist is private or the
-username doesn't exist.
+Returns `400` with `{ "error": "..." }` — a distinct message for a blank
+username, a user that doesn't exist, and a private/empty watchlist.
 
-Both endpoints share the same response-building logic (`FilmResponseService`)
-for the "full list vs. one random pick, with poster lookups" behavior.
+### `GET /api/underwatched-pick`
+
+Returns `200` with a single film (same shape as one array element above,
+with its poster) drawn at random from the curated underwatched list, or
+`204` if that list is empty. The frontend calls this when `/api/intersect`
+comes back with nothing in common.
+
+All film-returning endpoints share the same response-building logic
+(`FilmResponseService`) for the "full list vs. one random pick, with poster
+lookups" behavior. Every `400` is shaped by a `@RestControllerAdvice`
+(`ApiExceptionHandler`) so failures always look the same.
 
 ### `GET /api/users/{username}/exists`
 
@@ -162,4 +198,5 @@ submit button.
   watchlist isn't public (or is empty)
 - `exists: true, watchlistPublic: true` — ready to use
 
-`avatarUrl` is `null` if the profile has no avatar in the page markup.
+`avatarUrl` is `null` if the profile has no avatar in the page markup, and is
+rewritten to request a larger crop than the tiny one in the page source.

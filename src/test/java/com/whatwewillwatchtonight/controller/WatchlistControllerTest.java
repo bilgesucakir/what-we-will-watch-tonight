@@ -83,17 +83,31 @@ class WatchlistControllerTest {
     }
 
     @Test
-    void returns400WhenWatchlistIsInaccessible() throws Exception {
-        when(scraperService.fetchWatchlist(eq("ghost"))).thenReturn(WatchlistResult.inaccessible("ghost"));
+    void returns400WithADistinctMessageWhenTheUserDoesNotExist() throws Exception {
+        when(scraperService.fetchWatchlist(eq("ghost")))
+                .thenReturn(WatchlistResult.inaccessible("ghost", WatchlistResult.Reason.NONEXISTENT));
 
         mockMvc.perform(get("/api/watchlist").param("user", "ghost"))
                 .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("no Letterboxd user")))
                 .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("ghost")));
     }
 
     @Test
-    void returns400WhenUserIsBlank() throws Exception {
+    void returns400WithADistinctMessageWhenTheWatchlistIsPrivateOrEmpty() throws Exception {
+        when(scraperService.fetchWatchlist(eq("shy")))
+                .thenReturn(WatchlistResult.inaccessible("shy", WatchlistResult.Reason.PRIVATE_OR_EMPTY));
+
+        mockMvc.perform(get("/api/watchlist").param("user", "shy"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("private or empty")))
+                .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("shy")));
+    }
+
+    @Test
+    void returns400WithADistinctMessageWhenTheUsernameIsBlank() throws Exception {
         mockMvc.perform(get("/api/watchlist").param("user", " "))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("Fill in")));
     }
 }

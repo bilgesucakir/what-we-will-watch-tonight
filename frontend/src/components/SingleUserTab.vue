@@ -67,25 +67,28 @@ function downloadCsv() {
 </script>
 
 <template>
+  <div class="sofa-seats" aria-hidden="true">
+    <Transition name="seat-pop">
+      <img v-if="avatarUrl" :src="avatarUrl" alt="" class="seat seat--solo" />
+    </Transition>
+  </div>
+
   <h1>What I'll Watch Tonight</h1>
   <p class="subtitle">Pick something at random from just your own Letterboxd watchlist.</p>
 
   <form class="form" @submit.prevent="findTonightsPick">
     <div class="field">
-      <div class="input-row">
-        <input
-          v-model="username"
-          type="text"
-          placeholder="enter Letterboxd username"
-          :disabled="loading"
-          autocomplete="off"
-        />
-        <img v-if="avatarUrl" :src="avatarUrl" alt="" class="avatar" />
-      </div>
+      <input
+        v-model="username"
+        type="text"
+        placeholder="username"
+        :disabled="loading"
+        autocomplete="off"
+      />
       <p v-if="fieldError" class="field-error">{{ fieldError }}</p>
     </div>
     <button type="submit" :disabled="!canSubmit">
-      {{ pendingAction === 'tonight' ? 'Searching…' : "🎲 What I'll Watch Tonight" }}
+      {{ pendingAction === 'tonight' ? 'Searching…' : "🎲 Pick Something to Watch" }}
     </button>
     <button type="button" class="all-matches-button" :disabled="!canSubmit" @click="findAllFilms">
       {{ pendingAction === 'all' ? 'Searching…' : 'Return all films in my watchlist' }}
@@ -140,6 +143,67 @@ function downloadCsv() {
 </template>
 
 <style scoped>
+/*
+ * Seats the verified avatar on the armchair in the background image.
+ * .sofa-seats is a fixed overlay sized to exactly match the scene image in
+ * App.vue's `.app-background` (background-size: cover, pinned bottom-right,
+ * 1760x1040 png), so the offsets below are plain percentages of the image,
+ * measured from its right / bottom edges.
+ */
+.sofa-seats {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  width: max(100vw, calc(100vh * 1760 / 1040));
+  height: max(100vh, calc(100vw * 1040 / 1760));
+  z-index: -1;
+  pointer-events: none;
+}
+
+.seat {
+  position: absolute;
+  width: 5%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #fff;
+  box-shadow: 0 0.5rem 1.1rem rgba(0, 0, 0, 0.55);
+  transform: translate(50%, 50%);
+}
+
+/* Centered on the single armchair cushion. */
+.seat--solo {
+  right: 12.35%;
+  bottom: 20%;
+}
+
+/* Drop into the seat when the username checks out. */
+.seat-pop-enter-active {
+  transition: opacity 0.35s ease, transform 0.4s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.seat-pop-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.seat-pop-enter-from {
+  opacity: 0;
+  transform: translate(50%, 140%);
+}
+
+.seat-pop-leave-to {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seat-pop-enter-active {
+    transition: opacity 0.2s ease;
+  }
+  .seat-pop-enter-from {
+    transform: translate(50%, 50%);
+  }
+}
+
 h1 {
   margin-bottom: 0.25rem;
 }
@@ -162,24 +226,8 @@ h1 {
   gap: 0.35rem;
 }
 
-.input-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.input-row input {
-  flex: 1;
-  min-width: 0;
-}
-
-.avatar {
-  width: 2rem;
-  height: 2rem;
-  border-radius: 50%;
-  object-fit: cover;
-  flex-shrink: 0;
-  border: 2px solid #ccc;
+.field input {
+  width: 100%;
 }
 
 .field-error {

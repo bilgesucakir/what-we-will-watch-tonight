@@ -1,12 +1,26 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import SingleUserTab from './components/SingleUserTab.vue'
-import TwoUserTab from './components/TwoUserTab.vue'
+import TwoPlusUserTab from './components/TwoPlusUserTab.vue'
 
-const activeTab = ref('single')
+const activeTab = ref('two')
+
+// How many people the "Us" tab currently has inputs for (2-4); it emits this
+// so the sofa background can match the group size.
+const groupSize = ref(2)
+
+const SOFA_BY_GROUP_SIZE = { 2: 'app-background--two', 3: 'app-background--three', 4: 'app-background--four' }
+
+const backgroundClass = computed(() =>
+  activeTab.value === 'two'
+    ? SOFA_BY_GROUP_SIZE[groupSize.value] ?? 'app-background--two'
+    : 'app-background--single'
+)
 </script>
 
 <template>
+  <div class="app-background" :class="backgroundClass" aria-hidden="true"></div>
+
   <a
     class="github-link"
     href="https://github.com/bilgesucakir/what-we-will-watch-tonight"
@@ -32,22 +46,22 @@ const activeTab = ref('single')
     <nav class="tabs">
       <button
         type="button"
+        :class="['tab', { active: activeTab === 'two' }]"
+        @click="activeTab = 'two'"
+      >
+        Us
+      </button>
+      <button
+        type="button"
         :class="['tab', { active: activeTab === 'single' }]"
         @click="activeTab = 'single'"
       >
         Just Me
       </button>
-      <button
-        type="button"
-        :class="['tab', { active: activeTab === 'two' }]"
-        @click="activeTab = 'two'"
-      >
-        Me &amp; a Friend
-      </button>
     </nav>
 
-    <SingleUserTab v-if="activeTab === 'single'" />
-    <TwoUserTab v-else />
+    <TwoPlusUserTab v-if="activeTab === 'two'" @sofa-count="groupSize = $event" />
+    <SingleUserTab v-else />
   </main>
 </template>
 
@@ -55,6 +69,55 @@ const activeTab = ref('single')
 :global(body) {
   background: #121212;
   margin: 0;
+}
+
+/*
+ * Full-viewport background layer, swapped per tab. Images live in
+ * src/assets/backgrounds/ and are bundled by Vite via the url() refs below.
+ * Pin the image's bottom-right (where the sofa is) to the viewport's
+ * bottom-right so the sofa stays put across sizes; the seated-avatar layers
+ * in SingleUserTab / TwoPlusUserTab assume this + a 1760x1040 image.
+ */
+.app-background {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-color: #121212;
+  background-size: cover;
+  background-position: right bottom;
+  background-repeat: no-repeat;
+}
+
+/*
+ * Scrim over the image, heavier at the top where the UI text sits and light
+ * toward the bottom so the sofa stays visible.
+ */
+.app-background::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(18, 18, 18, 0.8) 0%,
+    rgba(18, 18, 18, 0.5) 35%,
+    rgba(18, 18, 18, 0.1) 100%
+  );
+}
+
+.app-background--single {
+  background-image: url('./assets/backgrounds/sofa-for-one.png');
+}
+
+.app-background--two {
+  background-image: url('./assets/backgrounds/sofa-for-two.png');
+}
+
+.app-background--three {
+  background-image: url('./assets/backgrounds/sofa-for-three.png');
+}
+
+.app-background--four {
+  background-image: url('./assets/backgrounds/sofa-for-four.png');
 }
 
 .github-link {
