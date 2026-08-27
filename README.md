@@ -101,7 +101,7 @@ npm test
 ### Coverage
 
 `mvn test` also writes a JaCoCo report to
-**`target/site/jacoco/index.html`** (backend, ~91% line / ~86% branch).
+**`target/site/jacoco/index.html`** (backend, ~97% line / ~97% branch).
 
 For the frontend:
 
@@ -110,7 +110,7 @@ cd frontend
 npm run test:coverage
 ```
 
-writes a v8 report to **`frontend/coverage/index.html`** (~99% line).
+writes a v8 report to **`frontend/coverage/index.html`** (100% line / ~95% branch).
 
 ## API
 

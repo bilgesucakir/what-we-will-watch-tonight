@@ -300,6 +300,17 @@ describe('TwoPlusUserTab', () => {
     expect(wrapper.text()).toContain("There's no Letterboxd user named 'bob'.")
   })
 
+  it('shows a connection error when the request fails outright', async () => {
+    intersectImpl = () => Promise.reject(new Error('offline'))
+
+    const wrapper = mount(TwoPlusUserTab)
+    await setUsernames(wrapper, 'alice', 'bob')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Could not reach the server. Please try again.')
+  })
+
   it('recommends an underwatched film when the watchlists have nothing in common', async () => {
     intersectImpl = () => jsonResponse([])
     underwatchedImpl = () =>

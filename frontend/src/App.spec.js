@@ -45,4 +45,23 @@ describe('App', () => {
       'https://github.com/bilgesucakir/what-we-will-watch-tonight'
     )
   })
+
+  it('swaps the sofa background as the group grows and shrinks', async () => {
+    const wrapper = mount(App)
+    const bg = () => wrapper.find('.app-background')
+
+    expect(bg().classes()).toContain('app-background--two')
+
+    await wrapper.find('.add-person').trigger('click')
+    expect(bg().classes()).toContain('app-background--three')
+
+    await wrapper.find('.add-person').trigger('click')
+    expect(bg().classes()).toContain('app-background--four')
+
+    await wrapper.find('.remove-person').trigger('click')
+    expect(bg().classes()).toContain('app-background--three')
+
+    await wrapper.findAll('.tab')[1].trigger('click')
+    expect(bg().classes()).toContain('app-background--single')
+  })
 })
