@@ -26,30 +26,37 @@ async function checkUsername(username) {
 // Debounced existence/avatar check for a username ref, shared by every tab
 // that has a username input. Guards against stale responses landing after
 // the field has changed again while the check was in flight.
-export function useUsernameCheck(usernameRef) {
+//
+// `isEnabled` is an optional predicate (read reactively); when it returns
+// false the check is skipped and the refs reset to null -- used to avoid
+// re-checking a username that's already been entered in another field.
+export function useUsernameCheck(usernameRef, isEnabled = () => true) {
   const exists = ref(null)
   const watchlistPublic = ref(null)
   const avatarUrl = ref(null)
 
   let timer = null
-  watch(usernameRef, (value) => {
-    clearTimeout(timer)
-    const trimmed = value.trim()
-    exists.value = null
-    watchlistPublic.value = null
-    avatarUrl.value = null
+  watch(
+    () => [usernameRef.value, isEnabled()],
+    ([value, enabled]) => {
+      clearTimeout(timer)
+      const trimmed = value.trim()
+      exists.value = null
+      watchlistPublic.value = null
+      avatarUrl.value = null
 
-    if (!trimmed) return
+      if (!trimmed || !enabled) return
 
-    timer = setTimeout(async () => {
-      const result = await checkUsername(trimmed)
-      if (usernameRef.value.trim() === trimmed) {
-        exists.value = result.exists
-        watchlistPublic.value = result.watchlistPublic
-        avatarUrl.value = result.avatarUrl
-      }
-    }, DEBOUNCE_MS)
-  })
+      timer = setTimeout(async () => {
+        const result = await checkUsername(trimmed)
+        if (usernameRef.value.trim() === trimmed && isEnabled()) {
+          exists.value = result.exists
+          watchlistPublic.value = result.watchlistPublic
+          avatarUrl.value = result.avatarUrl
+        }
+      }, DEBOUNCE_MS)
+    }
+  )
 
   return { exists, watchlistPublic, avatarUrl }
 }

@@ -8,18 +8,31 @@ const MAX_PEOPLE = 4
 
 const emit = defineEmits(['sofa-count'])
 
-// Always MAX_PEOPLE username slots and existence checks; `count` decides how
-// many are shown and used.
+// Always MAX_PEOPLE username slots; `count` decides how many are shown / used.
 const names = reactive(Array.from({ length: MAX_PEOPLE }, () => ''))
-const checks = names.map((_, index) => useUsernameCheck(toRef(names, index)))
 const count = ref(MIN_PEOPLE)
+
+const activeIndexes = computed(() => Array.from({ length: count.value }, (_, i) => i))
+const activeNames = computed(() => activeIndexes.value.map((i) => names[i].trim()))
+
+// True when field `index` repeats a username already entered in an earlier
+// active field (case-insensitive).
+function isRepeat(index) {
+  const name = names[index].trim().toLowerCase()
+  return (
+    name !== '' &&
+    activeIndexes.value.some((other) => other < index && names[other].trim().toLowerCase() === name)
+  )
+}
+
+// One existence/avatar check per slot; a repeated username is never fetched.
+const checks = names.map((_, index) => useUsernameCheck(toRef(names, index), () => !isRepeat(index)))
 
 // Let the parent swap the sofa background to match the group size.
 watch(count, (n) => emit('sofa-count', n), { immediate: true })
 
 const loading = ref(false)
 const error = ref('')
-const duplicateError = ref(false)
 const matches = ref(null)
 const surprisePick = ref(null)
 const pendingAction = ref(null)
@@ -28,9 +41,6 @@ const lastSearchWasRandom = ref(false)
 // The usernames the current `matches` came from, captured at search time so the
 // CSV filename stays right even if the inputs are edited afterwards.
 const searchedNames = ref([])
-
-const activeIndexes = computed(() => Array.from({ length: count.value }, (_, i) => i))
-const activeNames = computed(() => activeIndexes.value.map((i) => names[i].trim()))
 
 const hasEmptyField = computed(() => activeNames.value.some((name) => name === ''))
 const hasDuplicates = computed(() => {
@@ -46,6 +56,9 @@ const canSubmit = computed(
 )
 
 function fieldError(index) {
+  if (isRepeat(index)) {
+    return 'This username is already in the list.'
+  }
   return usernameFieldError(checks[index].exists.value, checks[index].watchlistPublic.value)
 }
 
@@ -82,16 +95,12 @@ function seatStyle(index) {
 
 async function search(random) {
   error.value = ''
-  duplicateError.value = false
   matches.value = null
   surprisePick.value = null
   lastSearchWasRandom.value = random
 
-  if (hasEmptyField.value) return
-  if (hasDuplicates.value) {
-    duplicateError.value = true
-    return
-  }
+  // The buttons are disabled in these states; guard anyway.
+  if (hasEmptyField.value || hasDuplicates.value) return
 
   const users = activeNames.value
   loading.value = true
@@ -200,10 +209,7 @@ function downloadCsv() {
     Scraping the watchlists, this can take a little while for large lists…
   </p>
 
-  <p v-if="duplicateError" class="status error">
-    Usernames must be different — give everyone their own Letterboxd username.
-  </p>
-  <p v-else-if="error" class="status error">{{ error }}</p>
+  <p v-if="error" class="status error">{{ error }}</p>
 
   <template v-if="matches !== null && !loading">
     <template v-if="matches.length === 0 && surprisePick">

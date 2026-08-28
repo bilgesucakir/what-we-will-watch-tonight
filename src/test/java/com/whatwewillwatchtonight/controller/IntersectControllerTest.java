@@ -174,6 +174,14 @@ class IntersectControllerTest {
     }
 
     @Test
+    void returns400WithADistinctMessageWhenAUsernameIsRepeated() throws Exception {
+        mockMvc.perform(get("/api/intersect")
+                        .param("user", "alice").param("user", "bob").param("user", "Alice"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("different username")));
+    }
+
+    @Test
     void returns400WithADistinctMessageWhenFewerThanTwoUsernames() throws Exception {
         mockMvc.perform(get("/api/intersect").param("user", "alice"))
                 .andExpect(status().isBadRequest())
