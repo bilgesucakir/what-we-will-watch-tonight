@@ -189,14 +189,35 @@ describe('TwoPlusUserTab', () => {
     expect(global.fetch).not.toHaveBeenCalledWith(expect.stringMatching(/^\/api\/intersect/))
   })
 
-  it('allows typing the same username twice but rejects submitting it', async () => {
+  it('flags a repeated username on its field and keeps the buttons disabled', async () => {
+    const wrapper = mount(TwoPlusUserTab)
+    await setUsernames(wrapper, 'alice', 'Alice')
+
+    expect(wrapper.text()).toContain('This username is already in the list.')
+    expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('.all-matches-button').attributes('disabled')).toBeDefined()
+  })
+
+  it('clears the repeat flag once the duplicate is changed', async () => {
+    const wrapper = mount(TwoPlusUserTab)
+    await setUsernames(wrapper, 'alice', 'alice')
+    expect(wrapper.text()).toContain('This username is already in the list.')
+
+    await wrapper.findAll('input')[1].setValue('bob')
+    await vi.advanceTimersByTimeAsync(500)
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('This username is already in the list.')
+    expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeUndefined()
+  })
+
+  it('never sends a request when a username is repeated', async () => {
     const wrapper = mount(TwoPlusUserTab)
     await setUsernames(wrapper, 'alice', 'alice')
 
     await wrapper.find('form').trigger('submit')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Usernames must be different')
     expect(global.fetch).not.toHaveBeenCalledWith(expect.stringMatching(/^\/api\/intersect/))
   })
 

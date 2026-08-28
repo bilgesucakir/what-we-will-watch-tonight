@@ -19,7 +19,6 @@ watch(count, (n) => emit('sofa-count', n), { immediate: true })
 
 const loading = ref(false)
 const error = ref('')
-const duplicateError = ref(false)
 const matches = ref(null)
 const surprisePick = ref(null)
 const pendingAction = ref(null)
@@ -46,6 +45,13 @@ const canSubmit = computed(
 )
 
 function fieldError(index) {
+  const name = names[index].trim().toLowerCase()
+  const isRepeat =
+    name !== '' &&
+    activeIndexes.value.some((other) => other < index && names[other].trim().toLowerCase() === name)
+  if (isRepeat) {
+    return 'This username is already in the list.'
+  }
   return usernameFieldError(checks[index].exists.value, checks[index].watchlistPublic.value)
 }
 
@@ -82,16 +88,12 @@ function seatStyle(index) {
 
 async function search(random) {
   error.value = ''
-  duplicateError.value = false
   matches.value = null
   surprisePick.value = null
   lastSearchWasRandom.value = random
 
-  if (hasEmptyField.value) return
-  if (hasDuplicates.value) {
-    duplicateError.value = true
-    return
-  }
+  // The buttons are disabled in these states; guard anyway.
+  if (hasEmptyField.value || hasDuplicates.value) return
 
   const users = activeNames.value
   loading.value = true
@@ -200,10 +202,7 @@ function downloadCsv() {
     Scraping the watchlists, this can take a little while for large lists…
   </p>
 
-  <p v-if="duplicateError" class="status error">
-    Usernames must be different — give everyone their own Letterboxd username.
-  </p>
-  <p v-else-if="error" class="status error">{{ error }}</p>
+  <p v-if="error" class="status error">{{ error }}</p>
 
   <template v-if="matches !== null && !loading">
     <template v-if="matches.length === 0 && surprisePick">
