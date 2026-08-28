@@ -8,11 +8,25 @@ const MAX_PEOPLE = 4
 
 const emit = defineEmits(['sofa-count'])
 
-// Always MAX_PEOPLE username slots and existence checks; `count` decides how
-// many are shown and used.
+// Always MAX_PEOPLE username slots; `count` decides how many are shown / used.
 const names = reactive(Array.from({ length: MAX_PEOPLE }, () => ''))
-const checks = names.map((_, index) => useUsernameCheck(toRef(names, index)))
 const count = ref(MIN_PEOPLE)
+
+const activeIndexes = computed(() => Array.from({ length: count.value }, (_, i) => i))
+const activeNames = computed(() => activeIndexes.value.map((i) => names[i].trim()))
+
+// True when field `index` repeats a username already entered in an earlier
+// active field (case-insensitive).
+function isRepeat(index) {
+  const name = names[index].trim().toLowerCase()
+  return (
+    name !== '' &&
+    activeIndexes.value.some((other) => other < index && names[other].trim().toLowerCase() === name)
+  )
+}
+
+// One existence/avatar check per slot; a repeated username is never fetched.
+const checks = names.map((_, index) => useUsernameCheck(toRef(names, index), () => !isRepeat(index)))
 
 // Let the parent swap the sofa background to match the group size.
 watch(count, (n) => emit('sofa-count', n), { immediate: true })
@@ -28,9 +42,6 @@ const lastSearchWasRandom = ref(false)
 // CSV filename stays right even if the inputs are edited afterwards.
 const searchedNames = ref([])
 
-const activeIndexes = computed(() => Array.from({ length: count.value }, (_, i) => i))
-const activeNames = computed(() => activeIndexes.value.map((i) => names[i].trim()))
-
 const hasEmptyField = computed(() => activeNames.value.some((name) => name === ''))
 const hasDuplicates = computed(() => {
   const filled = activeNames.value.filter(Boolean).map((name) => name.toLowerCase())
@@ -45,11 +56,7 @@ const canSubmit = computed(
 )
 
 function fieldError(index) {
-  const name = names[index].trim().toLowerCase()
-  const isRepeat =
-    name !== '' &&
-    activeIndexes.value.some((other) => other < index && names[other].trim().toLowerCase() === name)
-  if (isRepeat) {
+  if (isRepeat(index)) {
     return 'This username is already in the list.'
   }
   return usernameFieldError(checks[index].exists.value, checks[index].watchlistPublic.value)

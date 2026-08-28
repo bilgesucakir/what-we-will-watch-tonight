@@ -221,6 +221,39 @@ describe('TwoPlusUserTab', () => {
     expect(global.fetch).not.toHaveBeenCalledWith(expect.stringMatching(/^\/api\/intersect/))
   })
 
+  it('does not re-check or seat a repeated username', async () => {
+    existsResponses = {
+      alice: { exists: true, watchlistPublic: true, avatarUrl: 'https://a.ltrbxd.com/resized/avatar/alice.jpg' }
+    }
+
+    const wrapper = mount(TwoPlusUserTab)
+    await setUsernames(wrapper, 'alice', 'alice')
+
+    // the first field was checked once; the repeat field never hits the API
+    const aliceChecks = global.fetch.mock.calls.filter((c) => c[0] === '/api/users/alice/exists')
+    expect(aliceChecks).toHaveLength(1)
+    // and no avatar is seated for the repeat
+    expect(wrapper.findAll('.seat')).toHaveLength(1)
+  })
+
+  it('checks a field once it stops repeating an earlier one', async () => {
+    existsResponses = {
+      alice: { exists: true, watchlistPublic: true, avatarUrl: 'a.jpg' },
+      carol: { exists: true, watchlistPublic: true, avatarUrl: 'c.jpg' }
+    }
+
+    const wrapper = mount(TwoPlusUserTab)
+    await setUsernames(wrapper, 'alice', 'alice')
+    expect(global.fetch).not.toHaveBeenCalledWith('/api/users/carol/exists')
+
+    await wrapper.findAll('input')[0].setValue('carol') // field 0 changes; field 1 ('alice') is now unique
+    await vi.advanceTimersByTimeAsync(500)
+    await flushPromises()
+
+    expect(global.fetch).toHaveBeenCalledWith('/api/users/alice/exists')
+    expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeUndefined()
+  })
+
   it('the primary action requests a single random pick and shows it highlighted', async () => {
     intersectImpl = () =>
       jsonResponse([
