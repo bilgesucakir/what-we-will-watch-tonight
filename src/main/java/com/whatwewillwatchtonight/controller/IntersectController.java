@@ -2,6 +2,7 @@ package com.whatwewillwatchtonight.controller;
 
 import com.whatwewillwatchtonight.controller.dto.FilmMatchDto;
 import com.whatwewillwatchtonight.controller.error.BlankUsernameException;
+import com.whatwewillwatchtonight.controller.error.DuplicateUsernameException;
 import com.whatwewillwatchtonight.controller.error.InvalidUsernameCountException;
 import com.whatwewillwatchtonight.controller.error.UserNotFoundException;
 import com.whatwewillwatchtonight.controller.error.WatchlistUnavailableException;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
@@ -54,8 +56,8 @@ public class IntersectController {
                     + "(2 to 4 users), or a single random pick."
     )
     @ApiResponse(responseCode = "200", description = "The matching films, or a single random pick")
-    @ApiResponse(responseCode = "400", description = "Not 2-4 usernames, a username is blank, a user doesn't exist, "
-            + "or a watchlist is private/empty (each is a distinct message)")
+    @ApiResponse(responseCode = "400", description = "Not 2-4 usernames, a username is blank or repeated, a user "
+            + "doesn't exist, or a watchlist is private/empty (each is a distinct message)")
     @GetMapping("/api/intersect")
     public ResponseEntity<List<FilmMatchDto>> intersect(
             @Parameter(description = "Letterboxd usernames, repeated 2 to 4 times (e.g. ?user=alice&user=bob)")
@@ -69,6 +71,9 @@ public class IntersectController {
         }
         if (usernames.stream().anyMatch(String::isBlank)) {
             throw new BlankUsernameException();
+        }
+        if (usernames.stream().map(name -> name.toLowerCase(Locale.ROOT)).distinct().count() != usernames.size()) {
+            throw new DuplicateUsernameException();
         }
 
         List<WatchlistResult> results = usernames.stream()
