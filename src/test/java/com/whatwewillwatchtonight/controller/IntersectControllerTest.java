@@ -48,7 +48,7 @@ class IntersectControllerTest {
                 new Film("the-substance", "The Substance (2024)", 2024))));
         when(filmResponseService.toDtos(any(), eq(false))).thenReturn(List.of(
                 new FilmMatchDto("Dune: Part Two (2024)", "https://letterboxd.com/film/dune-part-two/", 2024,
-                        "https://image.tmdb.org/t/p/w342/poster.jpg")));
+                        null, null, "https://image.tmdb.org/t/p/w342/poster.jpg")));
 
         mockMvc.perform(get("/api/intersect").param("user", "alice").param("user", "bob"))
                 .andExpect(status().isOk())

@@ -81,6 +81,33 @@ public class TmdbPosterService {
         }
     }
 
+    /**
+     * @param movieId the exact TMDB movie id (from the Letterboxd film page)
+     * @return that movie's poster URL, or {@code null} if there's no API key,
+     *         the movie has no poster, or the request fails
+     */
+    public String findPosterUrlByTmdbId(int movieId) {
+        if (apiKey.isBlank()) {
+            return null;
+        }
+        try {
+            TmdbMovie movie = restClient.get()
+                    .uri(uriBuilder -> uriBuilder.path("/movie/" + movieId)
+                            .queryParam("api_key", apiKey)
+                            .build())
+                    .retrieve()
+                    .body(TmdbMovie.class);
+
+            if (movie == null || movie.posterPath() == null) {
+                return null;
+            }
+            return POSTER_IMAGE_BASE_URL + movie.posterPath();
+        } catch (RestClientException e) {
+            log.warn("Failed to fetch TMDB movie {}: {}", movieId, e.getClass().getSimpleName());
+            return null;
+        }
+    }
+
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record TmdbSearchResponse(List<TmdbMovie> results) {
     }

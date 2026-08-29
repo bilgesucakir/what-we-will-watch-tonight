@@ -55,6 +55,10 @@ class TmdbPosterServiceTest {
             respond(exchange, 200, body);
         });
         server.createContext("/broken/search/movie", exchange -> respond(exchange, 500, "error"));
+        server.createContext("/movie/693134", exchange ->
+                respond(exchange, 200, "{ \"poster_path\": \"/exact123.jpg\" }"));
+        server.createContext("/movie/404", exchange ->
+                respond(exchange, 200, "{ \"poster_path\": null }"));
 
         server.start();
         baseUrl = "http://localhost:" + server.getAddress().getPort();
@@ -121,5 +125,27 @@ class TmdbPosterServiceTest {
         TmdbPosterService service = serviceWith("test-key", baseUrl + "/broken");
 
         assertThat(service.findPosterUrl("Dune: Part Two (2024)", 2024)).isNull();
+    }
+
+    @Test
+    void findsThePosterForAnExactTmdbId() {
+        TmdbPosterService service = serviceWith("test-key", baseUrl);
+
+        assertThat(service.findPosterUrlByTmdbId(693134))
+                .isEqualTo("https://image.tmdb.org/t/p/w342/exact123.jpg");
+    }
+
+    @Test
+    void returnsNullForATmdbIdWithNoPoster() {
+        TmdbPosterService service = serviceWith("test-key", baseUrl);
+
+        assertThat(service.findPosterUrlByTmdbId(404)).isNull();
+    }
+
+    @Test
+    void returnsNullForATmdbIdLookupWhenApiKeyIsBlank() {
+        TmdbPosterService service = serviceWith("", baseUrl);
+
+        assertThat(service.findPosterUrlByTmdbId(693134)).isNull();
     }
 }

@@ -1,6 +1,7 @@
 package com.whatwewillwatchtonight.service;
 
 import com.whatwewillwatchtonight.model.Film;
+import com.whatwewillwatchtonight.model.FilmDetails;
 import org.jsoup.Connection;
 import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
@@ -32,6 +33,8 @@ public class LetterboxdScraperService {
     private static final Pattern YEAR_PATTERN = Pattern.compile("\\((\\d{4})\\)\\s*$");
     private static final Pattern AVATAR_CROP_SIZE_PATTERN = Pattern.compile("avtr-0-\\d+-0-\\d+-crop");
     private static final String AVATAR_CROP_SIZE_REPLACEMENT = "avtr-0-220-0-220-crop";
+    private static final Pattern LEADING_NUMBER_PATTERN = Pattern.compile("^\\s*([0-9]+(?:\\.[0-9]+)?)");
+    private static final Pattern RUNTIME_PATTERN = Pattern.compile("(\\d+)\\s*min");
 
     private final String baseUrl;
     private final long delayBetweenPagesMs;
@@ -132,6 +135,70 @@ public class LetterboxdScraperService {
         }
 
         return WatchlistResult.of(username, films);
+    }
+
+    /**
+     * Fetches the average Letterboxd rating, runtime and TMDB id for one film
+     * from its film page. Every part is best-effort -- any can come back
+     * {@code null}, as can the whole thing if the page can't be read.
+     *
+     * @param slug the film's Letterboxd slug
+     */
+    public FilmDetails fetchFilmDetails(String slug) {
+        Document page;
+        try {
+            page = get(baseUrl + "/film/" + slug + "/");
+        } catch (IOException e) {
+            log.warn("Failed to fetch film page for '{}': {}", slug, e.getMessage());
+            return FilmDetails.empty();
+        }
+        return new FilmDetails(extractRating(page), extractRuntimeMinutes(page), extractTmdbId(page));
+    }
+
+    /**
+     * @param page the fetched film page
+     * @return the exact TMDB movie id the film links to, or {@code null} if the
+     *         page doesn't carry one (e.g. it's a TV entry)
+     */
+    private Integer extractTmdbId(Document page) {
+        Element body = page.selectFirst("body[data-tmdb-type=movie][data-tmdb-id]");
+        if (body == null) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(body.attr("data-tmdb-id"));
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /**
+     * @param page the fetched film page
+     * @return the average rating out of 5 from the "Average rating" Twitter card,
+     *         or {@code null} if the film has none yet
+     */
+    private Double extractRating(Document page) {
+        Element label = page.selectFirst("meta[name=twitter:label2]");
+        Element data = page.selectFirst("meta[name=twitter:data2]");
+        if (label == null || data == null || !label.attr("content").equalsIgnoreCase("Average rating")) {
+            return null;
+        }
+        Matcher matcher = LEADING_NUMBER_PATTERN.matcher(data.attr("content"));
+        return matcher.find() ? Double.valueOf(matcher.group(1)) : null;
+    }
+
+    /**
+     * @param page the fetched film page
+     * @return the runtime in minutes from the page footer, or {@code null} if
+     *         it isn't listed
+     */
+    private Integer extractRuntimeMinutes(Document page) {
+        Element footer = page.selectFirst("p.text-link.text-footer");
+        if (footer == null) {
+            return null;
+        }
+        Matcher matcher = RUNTIME_PATTERN.matcher(footer.text());
+        return matcher.find() ? Integer.valueOf(matcher.group(1)) : null;
     }
 
     private Document get(String url) throws IOException {
