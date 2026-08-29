@@ -19,6 +19,7 @@ import java.util.Set;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -46,9 +47,9 @@ class IntersectControllerTest {
         when(scraperService.fetchWatchlist(eq("bob"))).thenReturn(WatchlistResult.of("bob", Set.of(
                 new Film("dune-part-two", "Dune: Part Two (2024)", 2024),
                 new Film("the-substance", "The Substance (2024)", 2024))));
-        when(filmResponseService.toDtos(any(), eq(false))).thenReturn(List.of(
+        when(filmResponseService.toDtos(any(), eq(false), any())).thenReturn(List.of(
                 new FilmMatchDto("Dune: Part Two (2024)", "https://letterboxd.com/film/dune-part-two/", 2024,
-                        null, null, "https://image.tmdb.org/t/p/w342/poster.jpg")));
+                        null, null, "https://image.tmdb.org/t/p/w342/poster.jpg", List.of())));
 
         mockMvc.perform(get("/api/intersect").param("user", "alice").param("user", "bob"))
                 .andExpect(status().isOk())
@@ -67,13 +68,13 @@ class IntersectControllerTest {
         when(scraperService.fetchWatchlist(eq("bob"))).thenReturn(WatchlistResult.of("bob", Set.of(
                 new Film("dune-part-two", "Dune: Part Two (2024)", 2024),
                 new Film("the-substance", "The Substance (2024)", 2024))));
-        when(filmResponseService.toDtos(any(), eq(false))).thenReturn(List.of());
+        when(filmResponseService.toDtos(any(), eq(false), any())).thenReturn(List.of());
 
         mockMvc.perform(get("/api/intersect").param("user", "alice").param("user", "bob"))
                 .andExpect(status().isOk());
 
         verify(filmResponseService).toDtos(
-                eq(List.of(new Film("dune-part-two", "Dune: Part Two (2024)", 2024))), eq(false));
+                eq(List.of(new Film("dune-part-two", "Dune: Part Two (2024)", 2024))), eq(false), isNull());
     }
 
     @Test
@@ -82,12 +83,64 @@ class IntersectControllerTest {
                 new Film("dune-part-two", "Dune: Part Two (2024)", 2024))));
         when(scraperService.fetchWatchlist(eq("bob"))).thenReturn(WatchlistResult.of("bob", Set.of(
                 new Film("dune-part-two", "Dune: Part Two (2024)", 2024))));
-        when(filmResponseService.toDtos(any(), eq(true))).thenReturn(List.of());
+        when(filmResponseService.toDtos(any(), eq(true), any())).thenReturn(List.of());
 
         mockMvc.perform(get("/api/intersect").param("user", "alice").param("user", "bob").param("random", "true"))
                 .andExpect(status().isOk());
 
-        verify(filmResponseService).toDtos(any(), eq(true));
+        verify(filmResponseService).toDtos(any(), eq(true), isNull());
+    }
+
+    @Test
+    void buildsAStreamingFilterFromTheProviderAndRegionParamsForARandomPick() throws Exception {
+        when(scraperService.fetchWatchlist(eq("alice"))).thenReturn(WatchlistResult.of("alice", Set.of(
+                new Film("dune-part-two", "Dune: Part Two (2024)", 2024))));
+        when(scraperService.fetchWatchlist(eq("bob"))).thenReturn(WatchlistResult.of("bob", Set.of(
+                new Film("dune-part-two", "Dune: Part Two (2024)", 2024))));
+        when(filmResponseService.toDtos(any(), eq(true), any())).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/intersect")
+                        .param("user", "alice").param("user", "bob")
+                        .param("random", "true")
+                        .param("provider", "8").param("provider", "337")
+                        .param("region", "TR"))
+                .andExpect(status().isOk());
+
+        verify(filmResponseService).toDtos(any(), eq(true),
+                eq(new com.whatwewillwatchtonight.service.StreamingFilter("TR", Set.of(8, 337))));
+    }
+
+    @Test
+    void doesNotBuildAStreamingFilterWhenProvidersAreGivenWithoutARegion() throws Exception {
+        when(scraperService.fetchWatchlist(eq("alice"))).thenReturn(WatchlistResult.of("alice", Set.of(
+                new Film("dune-part-two", "Dune: Part Two (2024)", 2024))));
+        when(scraperService.fetchWatchlist(eq("bob"))).thenReturn(WatchlistResult.of("bob", Set.of(
+                new Film("dune-part-two", "Dune: Part Two (2024)", 2024))));
+        when(filmResponseService.toDtos(any(), eq(true), any())).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/intersect")
+                        .param("user", "alice").param("user", "bob")
+                        .param("random", "true")
+                        .param("provider", "8"))
+                .andExpect(status().isOk());
+
+        verify(filmResponseService).toDtos(any(), eq(true), isNull());
+    }
+
+    @Test
+    void ignoresTheProviderParamsWhenNotARandomPick() throws Exception {
+        when(scraperService.fetchWatchlist(eq("alice"))).thenReturn(WatchlistResult.of("alice", Set.of(
+                new Film("dune-part-two", "Dune: Part Two (2024)", 2024))));
+        when(scraperService.fetchWatchlist(eq("bob"))).thenReturn(WatchlistResult.of("bob", Set.of(
+                new Film("dune-part-two", "Dune: Part Two (2024)", 2024))));
+        when(filmResponseService.toDtos(any(), eq(false), any())).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/intersect")
+                        .param("user", "alice").param("user", "bob")
+                        .param("provider", "8"))
+                .andExpect(status().isOk());
+
+        verify(filmResponseService).toDtos(any(), eq(false), isNull());
     }
 
     @Test
@@ -96,7 +149,7 @@ class IntersectControllerTest {
                 new Film("dune-part-two", "Dune: Part Two (2024)", 2024))));
         when(scraperService.fetchWatchlist(eq("bob"))).thenReturn(WatchlistResult.of("bob", Set.of(
                 new Film("anora", "Anora (2024)", 2024))));
-        when(filmResponseService.toDtos(eq(List.of()), eq(false))).thenReturn(List.of());
+        when(filmResponseService.toDtos(eq(List.of()), eq(false), any())).thenReturn(List.of());
 
         mockMvc.perform(get("/api/intersect").param("user", "alice").param("user", "bob"))
                 .andExpect(status().isOk())
@@ -208,13 +261,13 @@ class IntersectControllerTest {
         when(scraperService.fetchWatchlist(eq("carol"))).thenReturn(WatchlistResult.of("carol", Set.of(
                 new Film("anora", "Anora (2024)", 2024),
                 new Film("the-substance", "The Substance (2024)", 2024))));
-        when(filmResponseService.toDtos(any(), eq(false))).thenReturn(List.of());
+        when(filmResponseService.toDtos(any(), eq(false), any())).thenReturn(List.of());
 
         mockMvc.perform(get("/api/intersect")
                         .param("user", "alice").param("user", "bob").param("user", "carol"))
                 .andExpect(status().isOk());
 
         verify(filmResponseService).toDtos(
-                eq(List.of(new Film("anora", "Anora (2024)", 2024))), eq(false));
+                eq(List.of(new Film("anora", "Anora (2024)", 2024))), eq(false), isNull());
     }
 }

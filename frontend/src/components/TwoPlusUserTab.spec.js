@@ -13,9 +13,16 @@ describe('TwoPlusUserTab', () => {
   let existsResponses
   let intersectImpl
   let underwatchedImpl
+  let streamingProviders
 
   beforeEach(() => {
+    try {
+      localStorage.clear()
+    } catch (e) {
+      // no localStorage in this environment
+    }
     existsResponses = {}
+    streamingProviders = []
     intersectImpl = () => Promise.reject(new Error('intersect not mocked in this test'))
     underwatchedImpl = () =>
       jsonResponse({
@@ -35,6 +42,9 @@ describe('TwoPlusUserTab', () => {
       if (url === '/api/underwatched-pick') {
         return underwatchedImpl()
       }
+      if (url.startsWith('/api/streaming-providers')) {
+        return jsonResponse(streamingProviders)
+      }
       return intersectImpl(url)
     })
 
@@ -47,10 +57,10 @@ describe('TwoPlusUserTab', () => {
   })
 
   async function setUsernames(wrapper, ...users) {
-    while (wrapper.findAll('input').length < users.length) {
+    while (wrapper.findAll('input[type="text"]').length < users.length) {
       await wrapper.find('.add-person').trigger('click')
     }
-    const inputs = wrapper.findAll('input')
+    const inputs = wrapper.findAll('input[type="text"]')
     for (let i = 0; i < users.length; i++) {
       await inputs[i].setValue(users[i])
     }
@@ -61,7 +71,7 @@ describe('TwoPlusUserTab', () => {
   it('starts with two username inputs and no remove buttons', () => {
     const wrapper = mount(TwoPlusUserTab)
 
-    expect(wrapper.findAll('input')).toHaveLength(2)
+    expect(wrapper.findAll('input[type="text"]')).toHaveLength(2)
     expect(wrapper.findAll('.remove-person')).toHaveLength(0)
   })
 
@@ -69,10 +79,10 @@ describe('TwoPlusUserTab', () => {
     const wrapper = mount(TwoPlusUserTab)
 
     await wrapper.find('.add-person').trigger('click')
-    expect(wrapper.findAll('input')).toHaveLength(3)
+    expect(wrapper.findAll('input[type="text"]')).toHaveLength(3)
 
     await wrapper.find('.add-person').trigger('click')
-    expect(wrapper.findAll('input')).toHaveLength(4)
+    expect(wrapper.findAll('input[type="text"]')).toHaveLength(4)
     expect(wrapper.find('.add-person').exists()).toBe(false)
   })
 
@@ -92,13 +102,13 @@ describe('TwoPlusUserTab', () => {
     await wrapper.find('.add-person').trigger('click')
     await wrapper.find('.add-person').trigger('click')
 
-    const inputs = wrapper.findAll('input')
+    const inputs = wrapper.findAll('input[type="text"]')
     await inputs[2].setValue('carol')
     await inputs[3].setValue('dave')
 
     await wrapper.findAll('.remove-person')[0].trigger('click')
 
-    const remaining = wrapper.findAll('input')
+    const remaining = wrapper.findAll('input[type="text"]')
     expect(remaining).toHaveLength(3)
     expect(remaining[2].element.value).toBe('dave')
   })
@@ -163,7 +173,7 @@ describe('TwoPlusUserTab', () => {
 
   it('debounces the existence check while typing', async () => {
     const wrapper = mount(TwoPlusUserTab)
-    const input = wrapper.findAll('input')[0]
+    const input = wrapper.findAll('input[type="text"]')[0]
 
     await input.setValue('al')
     await vi.advanceTimersByTimeAsync(200)
@@ -203,7 +213,7 @@ describe('TwoPlusUserTab', () => {
     await setUsernames(wrapper, 'alice', 'alice')
     expect(wrapper.text()).toContain('This username is already in the list.')
 
-    await wrapper.findAll('input')[1].setValue('bob')
+    await wrapper.findAll('input[type="text"]')[1].setValue('bob')
     await vi.advanceTimersByTimeAsync(500)
     await flushPromises()
 
@@ -246,7 +256,7 @@ describe('TwoPlusUserTab', () => {
     await setUsernames(wrapper, 'alice', 'alice')
     expect(global.fetch).not.toHaveBeenCalledWith('/api/users/carol/exists')
 
-    await wrapper.findAll('input')[0].setValue('carol') // field 0 changes; field 1 ('alice') is now unique
+    await wrapper.findAll('input[type="text"]')[0].setValue('carol') // field 0 changes; field 1 ('alice') is now unique
     await vi.advanceTimersByTimeAsync(500)
     await flushPromises()
 
@@ -276,6 +286,65 @@ describe('TwoPlusUserTab', () => {
     expect(wrapper.find('.picked-meta').text()).toBe('★ 4.1  ·  139 mins')
     expect(wrapper.find('.picked-poster').attributes('src')).toBe('https://image.tmdb.org/t/p/w342/anora.jpg')
     expect(wrapper.find('.results').exists()).toBe(false)
+  })
+
+  it('adds the region and chosen provider ids to a random pick when the streaming filter is on', async () => {
+    streamingProviders = [
+      { id: 8, name: 'Netflix', logoUrl: null },
+      { id: 337, name: 'Disney Plus', logoUrl: null }
+    ]
+    intersectImpl = () =>
+      jsonResponse([
+        {
+          title: 'Anora',
+          url: 'https://letterboxd.com/film/anora/',
+          rating: 4.1,
+          length: 139,
+          posterUrl: null,
+          providers: [{ id: 8, name: 'Netflix', logoUrl: null }]
+        }
+      ])
+
+    const wrapper = mount(TwoPlusUserTab)
+    await flushPromises()
+    await setUsernames(wrapper, 'alice', 'bob')
+
+    await wrapper.find('.streaming-toggle input').setValue(true)
+    await wrapper.findAll('.chip')[0].trigger('click')
+
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    const pickCall = global.fetch.mock.calls.map((c) => c[0]).find((u) => u.includes('random=true'))
+    expect(pickCall).toMatch(/region=[A-Z]{2}/)
+    expect(pickCall).toContain('provider=8')
+    expect(pickCall).not.toContain('provider=337')
+    expect(wrapper.find('.picked-streaming').text()).toContain('Netflix')
+  })
+
+  it('warns on the pick card when nothing shared is on the chosen services', async () => {
+    streamingProviders = [{ id: 8, name: 'Netflix', logoUrl: null }]
+    intersectImpl = () =>
+      jsonResponse([
+        {
+          title: 'Anora',
+          url: 'https://letterboxd.com/film/anora/',
+          posterUrl: null,
+          providers: [{ id: 337, name: 'Disney Plus', logoUrl: null }]
+        }
+      ])
+
+    const wrapper = mount(TwoPlusUserTab)
+    await flushPromises()
+    await setUsernames(wrapper, 'alice', 'bob')
+
+    await wrapper.find('.streaming-toggle input').setValue(true)
+    await wrapper.findAll('.chip')[0].trigger('click')
+
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.find('.picked-streaming--warning').exists()).toBe(true)
   })
 
   it('omits the meta line when the pick has no rating or runtime', async () => {
@@ -319,6 +388,26 @@ describe('TwoPlusUserTab', () => {
     expect(global.fetch).toHaveBeenCalledWith('/api/intersect?user=alice&user=bob')
     expect(wrapper.find('.results a').attributes('href')).toBe('https://letterboxd.com/film/anora/')
     expect(wrapper.find('.picked-film').exists()).toBe(false)
+    expect(wrapper.find('.results-note').exists()).toBe(false)
+  })
+
+  it('turns the streaming filter off and clears it when the full list is requested', async () => {
+    streamingProviders = [{ id: 8, name: 'Netflix', logoUrl: null }]
+    intersectImpl = () =>
+      jsonResponse([{ title: 'Anora', url: 'https://letterboxd.com/film/anora/', posterUrl: null }])
+
+    const wrapper = mount(TwoPlusUserTab)
+    await flushPromises()
+    await setUsernames(wrapper, 'alice', 'bob')
+    await wrapper.find('.streaming-toggle input').setValue(true)
+    await wrapper.findAll('.chip')[0].trigger('click')
+
+    await wrapper.find('.all-matches-button').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('.results-note').text()).toMatch(/streaming filter turned off/i)
+    expect(wrapper.find('.streaming-toggle input').element.checked).toBe(false)
+    expect(wrapper.find('.streaming-body').exists()).toBe(false)
   })
 
   it('downloads a CSV named after everyone in the group', async () => {

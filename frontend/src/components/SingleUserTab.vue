@@ -1,8 +1,10 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useUsernameCheck, usernameFieldError } from '../composables/useUsernameCheck'
+import { useStreamingFilter, streamingNote } from '../composables/useStreamingFilter'
 import { downloadFilmsAsCsv } from '../utils/csv'
 import { pickMeta } from '../utils/format'
+import StreamingFilter from './StreamingFilter.vue'
 
 const username = ref('')
 const loading = ref(false)
@@ -10,6 +12,13 @@ const error = ref('')
 const matches = ref(null)
 const pendingAction = ref(null)
 const lastSearchWasRandom = ref(false)
+const pickStreamingNote = ref(null)
+// Set when "return all films" cleared an active streaming filter.
+const clearedFilterForList = ref(false)
+
+// "Only pick something we can stream" -- shared with the Us tab, remembered
+// in localStorage. Only affects the random pick.
+const streaming = useStreamingFilter()
 
 // The username the current `matches` results actually came from, captured
 // at search time so the CSV filename stays correct even if the input is
@@ -24,16 +33,29 @@ const fieldError = computed(() => usernameFieldError(exists.value, watchlistPubl
 async function search(random) {
   error.value = ''
   matches.value = null
+  pickStreamingNote.value = null
+  clearedFilterForList.value = false
   lastSearchWasRandom.value = random
 
   const trimmed = username.value.trim()
   if (!trimmed) return
 
+  // The full list is never streaming-filtered -- asking for it switches the
+  // filter off and drops the selection.
+  if (!random && streaming.enabled.value) {
+    streaming.enabled.value = false
+    streaming.clear()
+    clearedFilterForList.value = true
+  }
+
   loading.value = true
   pendingAction.value = random ? 'tonight' : 'all'
 
   const params = new URLSearchParams({ user: trimmed })
-  if (random) params.set('random', 'true')
+  if (random) {
+    params.set('random', 'true')
+    streaming.pickParams().forEach(([key, value]) => params.append(key, value))
+  }
 
   try {
     const response = await fetch(`/api/watchlist?${params}`)
@@ -46,6 +68,10 @@ async function search(random) {
 
     matches.value = body
     searchedUsername.value = trimmed
+
+    if (random && body.length > 0) {
+      pickStreamingNote.value = streamingNote(body[0], streaming)
+    }
   } catch (e) {
     error.value = 'Could not reach the server. Please try again.'
   } finally {
@@ -88,6 +114,8 @@ function downloadCsv() {
       />
       <p v-if="fieldError" class="field-error">{{ fieldError }}</p>
     </div>
+    <StreamingFilter :filter="streaming" />
+
     <button type="submit" :disabled="!canSubmit">
       {{ pendingAction === 'tonight' ? 'Searching…' : "🎲 Pick Something to Watch" }}
     </button>
@@ -123,12 +151,30 @@ function downloadCsv() {
             class="picked-title"
           >{{ matches[0].title }}</a>
           <p v-if="pickMeta(matches[0])" class="picked-meta">{{ pickMeta(matches[0]) }}</p>
+
+          <p v-if="pickStreamingNote?.warning" class="picked-streaming picked-streaming--warning">
+            {{ pickStreamingNote.text }}
+          </p>
+          <div v-else-if="pickStreamingNote?.providers?.length" class="picked-streaming">
+            <span class="picked-streaming-label">Streaming on</span>
+            <span v-for="p in pickStreamingNote.providers" :key="p.id" class="picked-provider">
+              <img v-if="p.logoUrl" :src="p.logoUrl" alt="" class="picked-provider-logo" />
+              {{ p.name }}
+            </span>
+          </div>
         </div>
       </div>
-      <p class="tmdb-attribution">Posters from <a href="https://www.themoviedb.org/" target="_blank" rel="noopener noreferrer">TMDB</a></p>
+      <p class="tmdb-attribution">
+        Streaming data
+        <a href="https://www.justwatch.com/" target="_blank" rel="noopener noreferrer">powered by JustWatch</a>
+        · Posters from <a href="https://www.themoviedb.org/" target="_blank" rel="noopener noreferrer">TMDB</a>
+      </p>
     </template>
 
     <template v-else>
+      <p v-if="clearedFilterForList" class="results-note">
+        Streaming filter turned off — this is your whole watchlist.
+      </p>
       <ul class="results">
         <li v-for="film in matches" :key="film.url">
           <a :href="film.url" target="_blank" rel="noopener noreferrer">
@@ -351,6 +397,48 @@ button:disabled {
   margin: 0.15rem 0 0;
   font-size: 0.85rem;
   color: #999;
+}
+
+.results-note {
+  margin-top: 1.5rem;
+  margin-bottom: -0.5rem;
+  font-size: 0.8rem;
+  color: #999;
+}
+
+.picked-streaming {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: #cfe3d6;
+}
+
+.picked-streaming--warning {
+  color: #d98c4a;
+}
+
+.picked-streaming-label {
+  color: #999;
+}
+
+.picked-provider {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: #17211c;
+  border: 1px solid #3d5c48;
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+}
+
+.picked-provider-logo {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 0.2rem;
+  object-fit: cover;
 }
 
 .status {

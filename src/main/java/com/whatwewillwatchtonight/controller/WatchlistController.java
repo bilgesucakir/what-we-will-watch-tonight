@@ -6,6 +6,7 @@ import com.whatwewillwatchtonight.controller.error.UserNotFoundException;
 import com.whatwewillwatchtonight.controller.error.WatchlistUnavailableException;
 import com.whatwewillwatchtonight.service.FilmResponseService;
 import com.whatwewillwatchtonight.service.LetterboxdScraperService;
+import com.whatwewillwatchtonight.service.StreamingFilter;
 import com.whatwewillwatchtonight.service.WatchlistResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Returns the films on a single Letterboxd user's watchlist.
@@ -42,7 +44,12 @@ public class WatchlistController {
     public ResponseEntity<List<FilmMatchDto>> watchlist(
             @Parameter(description = "Letterboxd username") @RequestParam String user,
             @Parameter(description = "Return a single random film instead of the full list")
-            @RequestParam(defaultValue = "false") boolean random) {
+            @RequestParam(defaultValue = "false") boolean random,
+            @Parameter(description = "TMDB provider ids to restrict a random pick to (repeat: ?provider=8&provider=337). "
+                    + "Needs `region` too.")
+            @RequestParam(name = "provider", required = false) List<Integer> providers,
+            @Parameter(description = "ISO-3166-1 country the streaming filter is checked in; required when `provider` is given")
+            @RequestParam(name = "region", required = false) String region) {
         if (user.isBlank()) {
             throw new BlankUsernameException();
         }
@@ -55,7 +62,11 @@ public class WatchlistController {
             };
         }
 
-        List<FilmMatchDto> matches = filmResponseService.toDtos(List.copyOf(result.films()), random);
+        StreamingFilter filter =
+                (random && providers != null && !providers.isEmpty() && region != null && !region.isBlank())
+                        ? new StreamingFilter(region, Set.copyOf(providers))
+                        : null;
+        List<FilmMatchDto> matches = filmResponseService.toDtos(List.copyOf(result.films()), random, filter);
 
         return ResponseEntity.ok(matches);
     }
