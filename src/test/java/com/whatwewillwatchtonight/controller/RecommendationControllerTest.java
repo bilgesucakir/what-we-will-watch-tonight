@@ -38,13 +38,15 @@ class RecommendationControllerTest {
                 .thenReturn(Optional.of(new Film("wanda", "Wanda", 1970)));
         when(filmResponseService.toDtos(any(), eq(true))).thenReturn(List.of(
                 new FilmMatchDto("Wanda", "https://letterboxd.com/film/wanda/", 1970,
-                        "https://image.tmdb.org/t/p/w342/wanda.jpg")));
+                        3.8, 103, "https://image.tmdb.org/t/p/w342/wanda.jpg")));
 
         mockMvc.perform(get("/api/underwatched-pick"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("Wanda"))
                 .andExpect(jsonPath("$.url").value("https://letterboxd.com/film/wanda/"))
                 .andExpect(jsonPath("$.year").value(1970))
+                .andExpect(jsonPath("$.rating").value(3.8))
+                .andExpect(jsonPath("$.length").value(103))
                 .andExpect(jsonPath("$.posterUrl").value("https://image.tmdb.org/t/p/w342/wanda.jpg"));
     }
 

@@ -94,6 +94,8 @@ describe('SingleUserTab', () => {
         {
           title: 'Anora',
           url: 'https://letterboxd.com/film/anora/',
+          rating: 4.1,
+          length: 139,
           posterUrl: 'https://image.tmdb.org/t/p/w342/anora.jpg'
         }
       ])
@@ -105,6 +107,7 @@ describe('SingleUserTab', () => {
 
     expect(global.fetch).toHaveBeenCalledWith('/api/watchlist?user=alice&random=true')
     expect(wrapper.find('.picked-title').text()).toBe('Anora')
+    expect(wrapper.find('.picked-meta').text()).toBe('★ 4.1  ·  139 mins')
     expect(wrapper.find('.picked-poster').attributes('src')).toBe('https://image.tmdb.org/t/p/w342/anora.jpg')
     expect(wrapper.find('.results').exists()).toBe(false)
   })

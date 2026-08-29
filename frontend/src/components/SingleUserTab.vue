@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import { useUsernameCheck, usernameFieldError } from '../composables/useUsernameCheck'
 import { downloadFilmsAsCsv } from '../utils/csv'
+import { pickMeta } from '../utils/format'
 
 const username = ref('')
 const loading = ref(false)
@@ -121,6 +122,7 @@ function downloadCsv() {
             rel="noopener noreferrer"
             class="picked-title"
           >{{ matches[0].title }}</a>
+          <p v-if="pickMeta(matches[0])" class="picked-meta">{{ pickMeta(matches[0]) }}</p>
         </div>
       </div>
       <p class="tmdb-attribution">Posters from <a href="https://www.themoviedb.org/" target="_blank" rel="noopener noreferrer">TMDB</a></p>
@@ -343,6 +345,12 @@ button:disabled {
 
 .picked-title:hover {
   color: #4a8f63;
+}
+
+.picked-meta {
+  margin: 0.15rem 0 0;
+  font-size: 0.85rem;
+  color: #999;
 }
 
 .status {

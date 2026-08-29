@@ -2,6 +2,7 @@ package com.whatwewillwatchtonight.service;
 
 import com.sun.net.httpserver.HttpServer;
 import com.whatwewillwatchtonight.model.Film;
+import com.whatwewillwatchtonight.model.FilmDetails;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -343,5 +344,69 @@ class LetterboxdScraperServiceTest {
         assertThat(result.films())
                 .extracting(Film::slug)
                 .containsExactlyInAnyOrder("dune-part-two", "the-substance", "anora");
+    }
+
+    @Test
+    void fetchFilmDetailsReadsTheRatingRuntimeAndTmdbId() {
+        server.createContext("/film/dune-part-two/", exchange -> respond(exchange, 200, """
+                <html><head>
+                  <meta name="twitter:label2" content="Average rating" />
+                  <meta name="twitter:data2" content="4.38 out of 5" />
+                </head><body class="film" data-type="film" data-tmdb-type="movie" data-tmdb-id="693134">
+                  <p class="text-link text-footer"> 167&nbsp;mins &nbsp; More at <a href="#">IMDb</a> </p>
+                </body></html>
+                """));
+
+        FilmDetails details = scraperService.fetchFilmDetails("dune-part-two");
+
+        assertThat(details.rating()).isEqualTo(4.38);
+        assertThat(details.length()).isEqualTo(167);
+        assertThat(details.tmdbId()).isEqualTo(693134);
+    }
+
+    @Test
+    void fetchFilmDetailsReturnsNullsWhenThePageHasNothingUseful() {
+        server.createContext("/film/blank/", exchange -> respond(exchange, 200, "<html><body>nothing here</body></html>"));
+
+        FilmDetails details = scraperService.fetchFilmDetails("blank");
+
+        assertThat(details).isEqualTo(FilmDetails.empty());
+    }
+
+    @Test
+    void fetchFilmDetailsHasNoTmdbIdForATvEntry() {
+        server.createContext("/film/some-show/", exchange -> respond(exchange, 200, """
+                <html><body data-tmdb-type="tv" data-tmdb-id="555">
+                  <p class="text-link text-footer"> 45&nbsp;mins </p>
+                </body></html>
+                """));
+
+        assertThat(scraperService.fetchFilmDetails("some-show").tmdbId()).isNull();
+    }
+
+    @Test
+    void fetchFilmDetailsIgnoresATwitterCardThatIsNotTheAverageRating() {
+        server.createContext("/film/unrated/", exchange -> respond(exchange, 200, """
+                <html><head>
+                  <meta name="twitter:label2" content="Directed by" />
+                  <meta name="twitter:data2" content="Some Director" />
+                </head><body>
+                  <p class="text-link text-footer"> 90&nbsp;mins </p>
+                </body></html>
+                """));
+
+        FilmDetails details = scraperService.fetchFilmDetails("unrated");
+
+        assertThat(details.rating()).isNull();
+        assertThat(details.length()).isEqualTo(90);
+    }
+
+    @Test
+    void fetchFilmDetailsReturnsEmptyWhenTheFilmPageCannotBeFetched() {
+        server.createContext("/film/missing/", exchange -> respond(exchange, 404, "not found"));
+
+        FilmDetails details = scraperService.fetchFilmDetails("missing");
+
+        assertThat(details).isEqualTo(FilmDetails.empty());
     }
 }

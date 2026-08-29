@@ -43,8 +43,9 @@ class WatchlistControllerTest {
                 new Film("anora", "Anora (2024)", 2024))));
         when(filmResponseService.toDtos(any(), eq(false))).thenReturn(List.of(
                 new FilmMatchDto("Anora (2024)", "https://letterboxd.com/film/anora/", 2024,
-                        "https://image.tmdb.org/t/p/w342/anora.jpg"),
-                new FilmMatchDto("Dune: Part Two (2024)", "https://letterboxd.com/film/dune-part-two/", 2024, null)));
+                        null, null, "https://image.tmdb.org/t/p/w342/anora.jpg"),
+                new FilmMatchDto("Dune: Part Two (2024)", "https://letterboxd.com/film/dune-part-two/", 2024,
+                        null, null, null)));
 
         mockMvc.perform(get("/api/watchlist").param("user", "alice"))
                 .andExpect(status().isOk())

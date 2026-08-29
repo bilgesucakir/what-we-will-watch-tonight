@@ -254,12 +254,14 @@ describe('TwoPlusUserTab', () => {
     expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeUndefined()
   })
 
-  it('the primary action requests a single random pick and shows it highlighted', async () => {
+  it('the primary action requests a single random pick and shows it with its rating and runtime', async () => {
     intersectImpl = () =>
       jsonResponse([
         {
           title: 'Anora',
           url: 'https://letterboxd.com/film/anora/',
+          rating: 4.1,
+          length: 139,
           posterUrl: 'https://image.tmdb.org/t/p/w342/anora.jpg'
         }
       ])
@@ -271,8 +273,21 @@ describe('TwoPlusUserTab', () => {
 
     expect(global.fetch).toHaveBeenCalledWith('/api/intersect?user=alice&user=bob&random=true')
     expect(wrapper.find('.picked-title').text()).toBe('Anora')
+    expect(wrapper.find('.picked-meta').text()).toBe('★ 4.1  ·  139 mins')
     expect(wrapper.find('.picked-poster').attributes('src')).toBe('https://image.tmdb.org/t/p/w342/anora.jpg')
     expect(wrapper.find('.results').exists()).toBe(false)
+  })
+
+  it('omits the meta line when the pick has no rating or runtime', async () => {
+    intersectImpl = () =>
+      jsonResponse([{ title: 'Anora', url: 'https://letterboxd.com/film/anora/', rating: null, length: null }])
+
+    const wrapper = mount(TwoPlusUserTab)
+    await setUsernames(wrapper, 'alice', 'bob')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.find('.picked-meta').exists()).toBe(false)
   })
 
   it('sends every username to the intersect API for a group of three', async () => {
@@ -372,6 +387,8 @@ describe('TwoPlusUserTab', () => {
         title: 'Wanda',
         url: 'https://letterboxd.com/film/wanda/',
         year: 1970,
+        rating: 3.8,
+        length: 103,
         posterUrl: 'https://image.tmdb.org/t/p/w342/wanda.jpg'
       })
 
@@ -381,6 +398,7 @@ describe('TwoPlusUserTab', () => {
     await flushPromises()
 
     expect(global.fetch).toHaveBeenCalledWith('/api/underwatched-pick')
+    expect(wrapper.find('.picked-meta').text()).toBe('★ 3.8  ·  103 mins')
     expect(wrapper.text()).toContain('I bet none of you have seen this')
     expect(wrapper.find('.picked-title').text()).toBe('Wanda')
     expect(wrapper.find('.picked-poster').attributes('src')).toBe('https://image.tmdb.org/t/p/w342/wanda.jpg')
