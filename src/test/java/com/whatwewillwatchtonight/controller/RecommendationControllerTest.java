@@ -38,7 +38,7 @@ class RecommendationControllerTest {
                 .thenReturn(Optional.of(new Film("wanda", "Wanda", 1970)));
         when(filmResponseService.toDtos(any(), eq(true))).thenReturn(List.of(
                 new FilmMatchDto("Wanda", "https://letterboxd.com/film/wanda/", 1970,
-                        3.8, 103, "https://image.tmdb.org/t/p/w342/wanda.jpg")));
+                        3.8, 103, "https://image.tmdb.org/t/p/w342/wanda.jpg", List.of())));
 
         mockMvc.perform(get("/api/underwatched-pick"))
                 .andExpect(status().isOk())

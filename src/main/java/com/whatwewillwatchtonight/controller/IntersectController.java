@@ -9,6 +9,7 @@ import com.whatwewillwatchtonight.controller.error.WatchlistUnavailableException
 import com.whatwewillwatchtonight.model.Film;
 import com.whatwewillwatchtonight.service.FilmResponseService;
 import com.whatwewillwatchtonight.service.LetterboxdScraperService;
+import com.whatwewillwatchtonight.service.StreamingFilter;
 import com.whatwewillwatchtonight.service.WatchlistIntersectionService;
 import com.whatwewillwatchtonight.service.WatchlistResult;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
@@ -63,7 +65,12 @@ public class IntersectController {
             @Parameter(description = "Letterboxd usernames, repeated 2 to 4 times (e.g. ?user=alice&user=bob)")
             @RequestParam("user") List<String> user,
             @Parameter(description = "Return a single random film instead of the full overlap")
-            @RequestParam(defaultValue = "false") boolean random) {
+            @RequestParam(defaultValue = "false") boolean random,
+            @Parameter(description = "TMDB provider ids to restrict a random pick to (repeat: ?provider=8&provider=337). "
+                    + "Only a film streamable on one of these is picked. Needs `region` too.")
+            @RequestParam(name = "provider", required = false) List<Integer> providers,
+            @Parameter(description = "ISO-3166-1 country the streaming filter is checked in; required when `provider` is given")
+            @RequestParam(name = "region", required = false) String region) {
         List<String> usernames = user.stream().map(String::trim).toList();
 
         if (usernames.size() < MIN_USERS || usernames.size() > MAX_USERS) {
@@ -94,7 +101,18 @@ public class IntersectController {
         }
 
         List<Film> matchedFilms = intersectionService.intersect(results);
-        return ResponseEntity.ok(filmResponseService.toDtos(matchedFilms, random));
+        return ResponseEntity.ok(filmResponseService.toDtos(matchedFilms, random, streamingFilter(random, providers, region)));
+    }
+
+    /**
+     * Builds a filter only for a random pick that named both some services and
+     * the region to check them in.
+     */
+    private static StreamingFilter streamingFilter(boolean random, List<Integer> providers, String region) {
+        if (!random || providers == null || providers.isEmpty() || region == null || region.isBlank()) {
+            return null;
+        }
+        return new StreamingFilter(region, Set.copyOf(providers));
     }
 
     private static List<String> usernamesWithReason(List<WatchlistResult> results, WatchlistResult.Reason reason) {

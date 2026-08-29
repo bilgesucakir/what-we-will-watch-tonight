@@ -14,6 +14,11 @@ describe('SingleUserTab', () => {
   let watchlistImpl
 
   beforeEach(() => {
+    try {
+      localStorage.clear()
+    } catch (e) {
+      // no localStorage in this environment
+    }
     existsResponses = {}
     watchlistImpl = () => Promise.reject(new Error('watchlist not mocked in this test'))
 
@@ -23,6 +28,9 @@ describe('SingleUserTab', () => {
         const username = decodeURIComponent(existsMatch[1])
         const result = existsResponses[username] ?? { exists: true, watchlistPublic: true }
         return jsonResponse(result)
+      }
+      if (url.startsWith('/api/streaming-providers')) {
+        return jsonResponse([])
       }
       return watchlistImpl(url)
     })
@@ -36,7 +44,7 @@ describe('SingleUserTab', () => {
   })
 
   async function setUsername(wrapper, username) {
-    await wrapper.find('input').setValue(username)
+    await wrapper.find('input[type="text"]').setValue(username)
     await vi.advanceTimersByTimeAsync(500)
     await flushPromises()
   }

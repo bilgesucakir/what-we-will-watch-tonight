@@ -18,6 +18,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -41,11 +42,11 @@ class WatchlistControllerTest {
         when(scraperService.fetchWatchlist(eq("alice"))).thenReturn(WatchlistResult.of("alice", Set.of(
                 new Film("dune-part-two", "Dune: Part Two (2024)", 2024),
                 new Film("anora", "Anora (2024)", 2024))));
-        when(filmResponseService.toDtos(any(), eq(false))).thenReturn(List.of(
+        when(filmResponseService.toDtos(any(), eq(false), any())).thenReturn(List.of(
                 new FilmMatchDto("Anora (2024)", "https://letterboxd.com/film/anora/", 2024,
-                        null, null, "https://image.tmdb.org/t/p/w342/anora.jpg"),
+                        null, null, "https://image.tmdb.org/t/p/w342/anora.jpg", List.of()),
                 new FilmMatchDto("Dune: Part Two (2024)", "https://letterboxd.com/film/dune-part-two/", 2024,
-                        null, null, null)));
+                        null, null, null, List.of())));
 
         mockMvc.perform(get("/api/watchlist").param("user", "alice"))
                 .andExpect(status().isOk())
@@ -59,13 +60,13 @@ class WatchlistControllerTest {
         when(scraperService.fetchWatchlist(eq("alice"))).thenReturn(WatchlistResult.of("alice", Set.of(
                 new Film("the-substance", "The Substance (2024)", 2024),
                 new Film("anora", "Anora (2024)", 2024))));
-        when(filmResponseService.toDtos(any(), eq(false))).thenReturn(List.of());
+        when(filmResponseService.toDtos(any(), eq(false), any())).thenReturn(List.of());
 
         mockMvc.perform(get("/api/watchlist").param("user", "alice"))
                 .andExpect(status().isOk());
 
         ArgumentCaptor<List<Film>> filmsCaptor = ArgumentCaptor.forClass(List.class);
-        verify(filmResponseService).toDtos(filmsCaptor.capture(), eq(false));
+        verify(filmResponseService).toDtos(filmsCaptor.capture(), eq(false), isNull());
         assertThat(filmsCaptor.getValue()).containsExactlyInAnyOrder(
                 new Film("anora", "Anora (2024)", 2024),
                 new Film("the-substance", "The Substance (2024)", 2024));
@@ -75,12 +76,26 @@ class WatchlistControllerTest {
     void passesRandomFlagThroughToFilmResponseService() throws Exception {
         when(scraperService.fetchWatchlist(eq("alice"))).thenReturn(WatchlistResult.of("alice", Set.of(
                 new Film("anora", "Anora (2024)", 2024))));
-        when(filmResponseService.toDtos(any(), eq(true))).thenReturn(List.of());
+        when(filmResponseService.toDtos(any(), eq(true), any())).thenReturn(List.of());
 
         mockMvc.perform(get("/api/watchlist").param("user", "alice").param("random", "true"))
                 .andExpect(status().isOk());
 
-        verify(filmResponseService).toDtos(any(), eq(true));
+        verify(filmResponseService).toDtos(any(), eq(true), isNull());
+    }
+
+    @Test
+    void buildsAStreamingFilterFromTheProviderAndRegionParamsForARandomPick() throws Exception {
+        when(scraperService.fetchWatchlist(eq("alice"))).thenReturn(WatchlistResult.of("alice", Set.of(
+                new Film("anora", "Anora (2024)", 2024))));
+        when(filmResponseService.toDtos(any(), eq(true), any())).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/watchlist").param("user", "alice").param("random", "true")
+                        .param("provider", "8").param("region", "TR"))
+                .andExpect(status().isOk());
+
+        verify(filmResponseService).toDtos(any(), eq(true),
+                eq(new com.whatwewillwatchtonight.service.StreamingFilter("TR", Set.of(8))));
     }
 
     @Test

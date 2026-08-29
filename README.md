@@ -19,12 +19,23 @@ list.
 
 - **Random pick, solo or group** — the primary action in both tabs: picks
   one random film (from one watchlist, or from the overlap of 2–4) and
-  shows it front and center, with a poster from TMDB where one's found.
-  Only the picked film gets a poster lookup
+  shows it front and center with its poster, average Letterboxd rating and
+  runtime. Only the picked film is enriched — its Letterboxd page is
+  scraped for the rating, runtime and exact TMDB id (so the poster is the
+  right one, not a title guess)
 - **2–4 people in the "Us" tab** — start with two username fields, "**+ Add
   person**" for a third and fourth (each removable inline); the sofa in the
   background grows with the group and each verified user's avatar takes a
   cushion
+- **"Only pick something we can stream"** — an optional filter under the
+  buttons: your country is detected from the browser (timezone, falling
+  back to locale), then you tick the streaming services you have and the
+  random pick is re-rolled until it lands on a film available on one of
+  them (the pick card then shows where it's streaming). Availability comes
+  from TMDB's watch-provider data, powered by JustWatch. Region + services
+  are remembered in your browser. It only affects the random pick —
+  asking for the full list switches the filter off and clears it, so
+  there's never any doubt about whether a list is filtered
 - **"Return all films"** — a smaller secondary action in both tabs for
   browsing the full list as a poster grid, sorted alphabetically, each
   linking to its Letterboxd page
@@ -41,9 +52,11 @@ list.
 
 ## Configuration
 
-Poster images are looked up from [TMDB](https://www.themoviedb.org/), which
-requires a free API key (Settings → API on your TMDB account). Without it,
-the app works exactly the same — matches just come back with no `posterUrl`.
+Poster images and streaming availability are looked up from
+[TMDB](https://www.themoviedb.org/) (the latter powered by JustWatch),
+which requires a free API key (Settings → API on your TMDB account).
+Without it, the app works exactly the same — matches just come back with no
+`posterUrl`, and the streaming filter has no services to offer.
 
 For local development, copy `.env.example` to `.env` and fill in
 `TMDB_API_KEY`:
@@ -129,21 +142,58 @@ title:
     "title": "The Outrun (2024)",
     "url": "https://letterboxd.com/film/the-outrun/",
     "year": 2024,
-    "posterUrl": "https://image.tmdb.org/t/p/w342/abc123.jpg"
+    "rating": null,
+    "length": null,
+    "posterUrl": "https://image.tmdb.org/t/p/w342/abc123.jpg",
+    "providers": []
   }
 ]
 ```
 
-`year` is parsed from the title (not the slug, which can carry a different
-disambiguation year) and is `null` if it couldn't be determined. `posterUrl`
-is `null` if `TMDB_API_KEY` isn't set or TMDB has no match.
+- `year` is parsed from the title (not the slug, which can carry a
+  different disambiguation year); `null` if it couldn't be determined.
+- `posterUrl` is `null` if `TMDB_API_KEY` isn't set or nothing matches.
+- `rating` (average Letterboxd rating, 0–5) and `length` (runtime in
+  minutes) are **only filled in for a single random pick** — see below.
+  In the full list they're always `null`.
+- `providers` is only populated for a random pick made with the streaming
+  filter (see below); otherwise it's an empty array.
 
 Add `&random=true` to get a single random film from the overlap instead of
 the full list — the response is still an array, just with 0 or 1 elements.
-Only that one film gets a poster lookup. There's no exclude/no-repeat
-parameter — every call (including "pick again") is an independent,
-genuinely random draw from the full overlap, so it can occasionally repeat
-the previous pick.
+That one film gets its Letterboxd page scraped for `rating`, `length` and
+the exact TMDB id, and the poster is fetched from that id rather than a
+title guess. There's no exclude/no-repeat parameter — every call
+(including "pick again") is an independent random draw, so it can
+occasionally repeat the previous pick.
+
+```json
+[
+  {
+    "title": "The Outrun (2024)",
+    "url": "https://letterboxd.com/film/the-outrun/",
+    "year": 2024,
+    "rating": 3.6,
+    "length": 118,
+    "posterUrl": "https://image.tmdb.org/t/p/w342/abc123.jpg",
+    "providers": [
+      { "id": 8, "name": "Netflix", "logoUrl": "https://image.tmdb.org/t/p/w45/abc.jpg" }
+    ]
+  }
+]
+```
+
+**Streaming filter.** Add `&provider={tmdbId}` (repeatable) **and**
+`&region={ISO-3166-1}` alongside `&random=true` to restrict the pick to
+films streamable on those services. Both are needed — there's no default
+region; the frontend detects it from the browser (timezone, then locale).
+The backend walks a shuffled overlap, checking each candidate's TMDB
+watch-provider data (subscription / free / ad-supported — not rent or buy)
+for the region, and returns the first film on one of the given services,
+with its `providers` filled in. If nothing in the overlap is streamable on
+them it still returns a film (so the UI can say "not on your services").
+The params are ignored without `&random=true`, or if either is missing.
+Get the list of provider ids for a region from `/api/streaming-providers`.
 
 Returns `400` with `{ "error": "..." }`, one distinct message per problem:
 
@@ -154,29 +204,34 @@ Returns `400` with `{ "error": "..." }`, one distinct message per problem:
 
 ### `GET /api/watchlist?user={username}`
 
-Single-user counterpart to `/api/intersect` — same response shape, same
-`&random=true` behavior, but for one person's own watchlist:
-
-```json
-[
-  {
-    "title": "The Outrun (2024)",
-    "url": "https://letterboxd.com/film/the-outrun/",
-    "year": 2024,
-    "posterUrl": "https://image.tmdb.org/t/p/w342/abc123.jpg"
-  }
-]
-```
+Single-user counterpart to `/api/intersect` — same response shape (with the
+same `rating` / `length` rules), same `&random=true` behavior (including the
+`&provider=` / `&region=` streaming filter), but for one person's own
+watchlist.
 
 Returns `400` with `{ "error": "..." }` — a distinct message for a blank
 username, a user that doesn't exist, and a private/empty watchlist.
 
+### `GET /api/streaming-providers?region={ISO-3166-1}`
+
+Returns `200` with the streaming services TMDB (via JustWatch) lists for
+movies in that region, most mainstream first — used to build the streaming
+filter's chips. `region` is required (`400` without it). Empty array if
+`TMDB_API_KEY` isn't set.
+
+```json
+[
+  { "id": 8, "name": "Netflix", "logoUrl": "https://image.tmdb.org/t/p/w45/abc.jpg" },
+  { "id": 337, "name": "Disney Plus", "logoUrl": "https://image.tmdb.org/t/p/w45/def.jpg" }
+]
+```
+
 ### `GET /api/underwatched-pick`
 
-Returns `200` with a single film (same shape as one array element above,
-with its poster) drawn at random from the curated underwatched list, or
-`204` if that list is empty. The frontend calls this when `/api/intersect`
-comes back with nothing in common.
+Returns `200` with a single film (same object shape as one array element
+above — poster, `rating`, `length` all filled in) drawn at random from the
+curated underwatched list, or `204` if that list is empty. The frontend
+calls this when `/api/intersect` comes back with nothing in common.
 
 All film-returning endpoints share the same response-building logic
 (`FilmResponseService`) for the "full list vs. one random pick, with poster

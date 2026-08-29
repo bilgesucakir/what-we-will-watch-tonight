@@ -15,7 +15,7 @@ describe('App', () => {
     const wrapper = mount(App)
 
     expect(wrapper.text()).toContain("What We'll Watch Tonight")
-    expect(wrapper.findAll('input')).toHaveLength(2)
+    expect(wrapper.findAll('input[type="text"]')).toHaveLength(2)
   })
 
   it('switches to the single-user tab when clicked', async () => {
@@ -25,7 +25,7 @@ describe('App', () => {
 
     expect(wrapper.text()).toContain("What I'll Watch Tonight")
     expect(wrapper.text()).not.toContain("What We'll Watch Tonight")
-    expect(wrapper.findAll('input')).toHaveLength(1)
+    expect(wrapper.findAll('input[type="text"]')).toHaveLength(1)
   })
 
   it('switches back to the two-user tab', async () => {
@@ -35,7 +35,7 @@ describe('App', () => {
     await wrapper.findAll('.tab')[0].trigger('click')
 
     expect(wrapper.text()).toContain("What We'll Watch Tonight")
-    expect(wrapper.findAll('input')).toHaveLength(2)
+    expect(wrapper.findAll('input[type="text"]')).toHaveLength(2)
   })
 
   it('shows the GitHub link regardless of active tab', () => {

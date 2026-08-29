@@ -3,10 +3,12 @@ package com.whatwewillwatchtonight.service;
 import com.whatwewillwatchtonight.controller.dto.FilmMatchDto;
 import com.whatwewillwatchtonight.model.Film;
 import com.whatwewillwatchtonight.model.FilmDetails;
+import com.whatwewillwatchtonight.model.StreamingProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Executors;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -23,15 +25,18 @@ import static org.mockito.Mockito.when;
 class FilmResponseServiceTest {
 
     private TmdbPosterService posterService;
+    private TmdbStreamingService streamingService;
     private LetterboxdScraperService scraperService;
     private FilmResponseService service;
 
     @BeforeEach
     void setUp() {
         posterService = mock(TmdbPosterService.class);
+        streamingService = mock(TmdbStreamingService.class);
         scraperService = mock(LetterboxdScraperService.class);
         when(scraperService.fetchFilmDetails(any())).thenReturn(FilmDetails.empty());
-        service = new FilmResponseService(posterService, scraperService, Executors.newVirtualThreadPerTaskExecutor());
+        service = new FilmResponseService(
+                posterService, streamingService, scraperService, Executors.newVirtualThreadPerTaskExecutor());
     }
 
     @Test
@@ -127,6 +132,46 @@ class FilmResponseServiceTest {
 
         verify(posterService, times(1)).findPosterUrl(any(), any());
         verify(scraperService, times(1)).fetchFilmDetails(any());
+    }
+
+    @Test
+    void randomModeWithAStreamingFilterPicksAFilmThatIsOnASelectedService() {
+        when(posterService.findPosterUrlByTmdbId(anyInt())).thenReturn("poster.jpg");
+        when(scraperService.fetchFilmDetails("on-netflix")).thenReturn(new FilmDetails(4.0, 100, 200));
+        when(scraperService.fetchFilmDetails("nowhere")).thenReturn(new FilmDetails(3.0, 90, 300));
+        when(scraperService.fetchFilmDetails("also-nowhere")).thenReturn(new FilmDetails(3.5, 95, 400));
+        when(streamingService.streamingOptions(200, "US"))
+                .thenReturn(List.of(new StreamingProvider(8, "Netflix", null)));
+        when(streamingService.streamingOptions(300, "US")).thenReturn(List.of());
+        when(streamingService.streamingOptions(400, "US"))
+                .thenReturn(List.of(new StreamingProvider(9, "Prime Video", null)));
+
+        List<Film> films = List.of(
+                new Film("on-netflix", "On Netflix (2024)", 2024),
+                new Film("nowhere", "Nowhere (2024)", 2024),
+                new Film("also-nowhere", "Also Nowhere (2024)", 2024));
+
+        List<FilmMatchDto> dtos = service.toDtos(films, true, new StreamingFilter("US", Set.of(8)));
+
+        assertThat(dtos).hasSize(1);
+        assertThat(dtos.get(0).title()).isEqualTo("On Netflix (2024)");
+        assertThat(dtos.get(0).providers()).extracting(StreamingProvider::name).containsExactly("Netflix");
+    }
+
+    @Test
+    void randomModeWithAStreamingFilterHandsBackAFilmAnywayWhenNothingIsStreamable() {
+        when(posterService.findPosterUrlByTmdbId(anyInt())).thenReturn("poster.jpg");
+        when(scraperService.fetchFilmDetails(any())).thenReturn(new FilmDetails(3.0, 90, 300));
+        when(streamingService.streamingOptions(eq(300), eq("US"))).thenReturn(List.of());
+
+        List<Film> films = List.of(
+                new Film("a", "A (2024)", 2024),
+                new Film("b", "B (2024)", 2024));
+
+        List<FilmMatchDto> dtos = service.toDtos(films, true, new StreamingFilter("US", Set.of(8)));
+
+        assertThat(dtos).hasSize(1);
+        assertThat(dtos.get(0).providers()).isEmpty();
     }
 
     @Test
