@@ -5,6 +5,7 @@ import { useStreamingFilter, streamingNote } from '../composables/useStreamingFi
 import { downloadFilmsAsCsv } from '../utils/csv'
 import { pickMeta } from '../utils/format'
 import StreamingFilter from './StreamingFilter.vue'
+import SofaStage from './SofaStage.vue'
 
 const username = ref('')
 const loading = ref(false)
@@ -94,11 +95,7 @@ function downloadCsv() {
 </script>
 
 <template>
-  <div class="sofa-seats" aria-hidden="true">
-    <Transition name="seat-pop">
-      <img v-if="avatarUrl" :src="avatarUrl" alt="" class="seat seat--solo" />
-    </Transition>
-  </div>
+  <SofaStage :count="1" :avatars="[avatarUrl]" />
 
   <h1>What I'll Watch Tonight</h1>
   <p class="subtitle">Pick something at random from just your own Letterboxd watchlist.</p>
@@ -191,67 +188,6 @@ function downloadCsv() {
 </template>
 
 <style scoped>
-/*
- * Seats the verified avatar on the armchair in the background image.
- * .sofa-seats is a fixed overlay sized to exactly match the scene image in
- * App.vue's `.app-background` (background-size: cover, pinned bottom-right,
- * 1760x1040 png), so the offsets below are plain percentages of the image,
- * measured from its right / bottom edges.
- */
-.sofa-seats {
-  position: fixed;
-  right: 0;
-  bottom: 0;
-  width: max(100vw, calc(100vh * 1760 / 1040));
-  height: max(100vh, calc(100vw * 1040 / 1760));
-  z-index: -1;
-  pointer-events: none;
-}
-
-.seat {
-  position: absolute;
-  width: 5%;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1px solid #fff;
-  box-shadow: 0 0.5rem 1.1rem rgba(0, 0, 0, 0.55);
-  transform: translate(50%, 50%);
-}
-
-/* Centered on the single armchair cushion. */
-.seat--solo {
-  right: 12.35%;
-  bottom: 20%;
-}
-
-/* Drop into the seat when the username checks out. */
-.seat-pop-enter-active {
-  transition: opacity 0.35s ease, transform 0.4s cubic-bezier(0.2, 1.4, 0.4, 1);
-}
-
-.seat-pop-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.seat-pop-enter-from {
-  opacity: 0;
-  transform: translate(50%, 140%);
-}
-
-.seat-pop-leave-to {
-  opacity: 0;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .seat-pop-enter-active {
-    transition: opacity 0.2s ease;
-  }
-  .seat-pop-enter-from {
-    transform: translate(50%, 50%);
-  }
-}
-
 h1 {
   margin-bottom: 0.25rem;
 }
@@ -311,14 +247,14 @@ button:disabled {
 }
 
 .download-button {
-  margin-top: 1.5rem;
-  background: #e0e0e0;
-  color: #4a8f63;
+  margin-top: 0;
+  background: #4a8f63;
+  color: #e0e0e0;
   border: 1px solid #4a8f63;
 }
 
 .download-button:hover {
-  background: #cbe0d1;
+  background: #3d7a53;
 }
 
 .download-button-small {
@@ -474,7 +410,7 @@ button:disabled {
 .results {
   list-style: none;
   padding: 0;
-  margin-top: 1.5rem;
+  margin: 1.5rem 0 0.75rem;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
@@ -524,5 +460,42 @@ button:disabled {
 
 .tmdb-attribution a:hover {
   color: #4a8f63;
+}
+
+/* --- Mobile (keep the 640px breakpoint in sync with App.vue) --- */
+@media (max-width: 640px) {
+  h1 {
+    font-size: 1.6rem;
+  }
+
+  .subtitle {
+    margin-bottom: 1.25rem;
+  }
+
+  .results {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Keep the poster and its details side by side -- just tighter and smaller. */
+  .picked-film {
+    gap: 0.9rem;
+    padding: 1rem;
+  }
+
+  .picked-poster {
+    width: 5rem;
+  }
+
+  .picked-label {
+    font-size: 0.7rem;
+  }
+
+  .picked-title {
+    font-size: 1rem;
+  }
+
+  .picked-meta {
+    font-size: 0.8rem;
+  }
 }
 </style>

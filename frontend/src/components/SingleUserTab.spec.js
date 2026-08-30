@@ -87,7 +87,7 @@ describe('SingleUserTab', () => {
     const wrapper = mount(SingleUserTab)
     await setUsername(wrapper, 'alice')
 
-    expect(wrapper.find('.seat--solo').attributes('src')).toBe('https://a.ltrbxd.com/resized/avatar/alice.jpg')
+    expect(wrapper.find('.seat').attributes('src')).toBe('https://a.ltrbxd.com/resized/avatar/alice.jpg')
   })
 
   it('does not seat anyone until the username is verified', () => {

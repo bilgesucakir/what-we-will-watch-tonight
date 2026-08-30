@@ -56,10 +56,33 @@ describe('useStreamingFilter', () => {
     vi.unstubAllGlobals()
   })
 
-  it('loads the provider list for its region on creation', async () => {
+  it('starts switched off and fetches nothing until the box is ticked', async () => {
     const filter = useStreamingFilter()
     await flushPromises()
+
+    expect(filter.enabled.value).toBe(false)
+    expect(global.fetch).not.toHaveBeenCalled()
+    expect(filter.providers.value).toHaveLength(0)
+  })
+
+  it('loads the region provider list the first time the box is ticked', async () => {
+    const filter = useStreamingFilter()
+    await flushPromises()
+
+    filter.enabled.value = true
+    await flushPromises()
+
+    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/api/streaming-providers'))
     expect(filter.providers.value).toHaveLength(2)
+  })
+
+  it('does not carry the on/off state to a fresh instance -- it starts off again', async () => {
+    const first = useStreamingFilter()
+    first.enabled.value = true
+    await flushPromises()
+
+    const second = useStreamingFilter()
+    expect(second.enabled.value).toBe(false)
   })
 
   it('is only "active" when switched on and at least one service is picked', async () => {
@@ -102,6 +125,7 @@ describe('useStreamingFilter', () => {
 
   it('drops selections the new region does not offer when the region changes', async () => {
     const filter = useStreamingFilter()
+    filter.enabled.value = true
     await flushPromises()
 
     filter.toggle(8)

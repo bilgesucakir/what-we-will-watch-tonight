@@ -1,15 +1,14 @@
 <script setup>
-import { reactive, ref, computed, toRef, watch } from 'vue'
+import { reactive, ref, computed, toRef } from 'vue'
 import { useUsernameCheck, usernameFieldError } from '../composables/useUsernameCheck'
 import { useStreamingFilter, streamingNote } from '../composables/useStreamingFilter'
 import { downloadFilmsAsCsv } from '../utils/csv'
 import { pickMeta } from '../utils/format'
 import StreamingFilter from './StreamingFilter.vue'
+import SofaStage from './SofaStage.vue'
 
 const MIN_PEOPLE = 2
 const MAX_PEOPLE = 4
-
-const emit = defineEmits(['sofa-count'])
 
 // Always MAX_PEOPLE username slots; `count` decides how many are shown / used.
 const names = reactive(Array.from({ length: MAX_PEOPLE }, () => ''))
@@ -31,8 +30,8 @@ function isRepeat(index) {
 // One existence/avatar check per slot; a repeated username is never fetched.
 const checks = names.map((_, index) => useUsernameCheck(toRef(names, index), () => !isRepeat(index)))
 
-// Let the parent swap the sofa background to match the group size.
-watch(count, (n) => emit('sofa-count', n), { immediate: true })
+// Avatar URLs for the active people, in order, for the sofa banner.
+const seatedAvatars = computed(() => activeIndexes.value.map((i) => checks[i].avatarUrl.value))
 
 // "Only pick something we can stream" -- region + services + on/off, remembered
 // in localStorage. Only affects the random pick.
@@ -85,23 +84,6 @@ function removePerson(index) {
   }
   names[count.value - 1] = ''
   count.value -= 1
-}
-
-// Circle diameter + per-cushion offsets (percentages of the background image,
-// from its right / bottom edges), matched to sofa-for-two/three/four.png.
-const SEAT_LAYOUTS = {
-  2: { width: 4.5, bottom: 20, rights: [20, 12.5] },
-  3: { width: 4.5, bottom: 20, rights: [26.5, 19.5, 12.5] },
-  4: { width: 4.5, bottom: 20, rights: [33.5, 26.5, 19.5, 12.5] }
-}
-
-function seatStyle(index) {
-  const layout = SEAT_LAYOUTS[count.value]
-  return {
-    width: `${layout.width}%`,
-    right: `${layout.rights[index]}%`,
-    bottom: `${layout.bottom}%`
-  }
 }
 
 async function search(random) {
@@ -180,19 +162,7 @@ function downloadCsv() {
 </script>
 
 <template>
-  <div class="sofa-seats" aria-hidden="true">
-    <template v-for="index in count" :key="index - 1">
-      <Transition name="seat-pop">
-        <img
-          v-if="checks[index - 1].avatarUrl.value"
-          :src="checks[index - 1].avatarUrl.value"
-          alt=""
-          class="seat"
-          :style="seatStyle(index - 1)"
-        />
-      </Transition>
-    </template>
-  </div>
+  <SofaStage :count="count" :avatars="seatedAvatars" />
 
   <h1>What We'll Watch Tonight</h1>
   <p class="subtitle">
@@ -334,60 +304,6 @@ function downloadCsv() {
 </template>
 
 <style scoped>
-/*
- * Seats each verified avatar on a cushion of the background sofa. .sofa-seats
- * is a fixed overlay sized to exactly match App.vue's `.app-background`
- * (background-size: cover, pinned bottom-right, 1760x1040 png); the per-seat
- * right / bottom / width come from SEAT_LAYOUTS in the script, one layout per
- * sofa size.
- */
-.sofa-seats {
-  position: fixed;
-  right: 0;
-  bottom: 0;
-  width: max(100vw, calc(100vh * 1760 / 1040));
-  height: max(100vh, calc(100vw * 1040 / 1760));
-  z-index: -1;
-  pointer-events: none;
-}
-
-.seat {
-  position: absolute;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1px solid #fff;
-  box-shadow: 0 0.5rem 1.1rem rgba(0, 0, 0, 0.55);
-  transform: translate(50%, 50%);
-}
-
-/* Drop into the seat when the username checks out. */
-.seat-pop-enter-active {
-  transition: opacity 0.35s ease, transform 0.4s cubic-bezier(0.2, 1.4, 0.4, 1);
-}
-
-.seat-pop-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.seat-pop-enter-from {
-  opacity: 0;
-  transform: translate(50%, 140%);
-}
-
-.seat-pop-leave-to {
-  opacity: 0;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .seat-pop-enter-active {
-    transition: opacity 0.2s ease;
-  }
-  .seat-pop-enter-from {
-    transform: translate(50%, 50%);
-  }
-}
-
 h1 {
   margin-bottom: 0.25rem;
 }
@@ -495,14 +411,14 @@ button:disabled {
 }
 
 .download-button {
-  margin-top: 1.5rem;
-  background: #e0e0e0;
-  color: #4a8f63;
+  margin-top: 0;
+  background: #4a8f63;
+  color: #e0e0e0;
   border: 1px solid #4a8f63;
 }
 
 .download-button:hover {
-  background: #cbe0d1;
+  background: #3d7a53;
 }
 
 .download-button-small {
@@ -664,7 +580,7 @@ button:disabled {
 .results {
   list-style: none;
   padding: 0;
-  margin-top: 1.5rem;
+  margin: 1.5rem 0 0.75rem;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
@@ -714,5 +630,42 @@ button:disabled {
 
 .tmdb-attribution a:hover {
   color: #4a8f63;
+}
+
+/* --- Mobile (keep the 640px breakpoint in sync with App.vue) --- */
+@media (max-width: 640px) {
+  h1 {
+    font-size: 1.6rem;
+  }
+
+  .subtitle {
+    margin-bottom: 1.25rem;
+  }
+
+  .results {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Keep the poster and its details side by side -- just tighter and smaller. */
+  .picked-film {
+    gap: 0.9rem;
+    padding: 1rem;
+  }
+
+  .picked-poster {
+    width: 5rem;
+  }
+
+  .picked-label {
+    font-size: 0.7rem;
+  }
+
+  .picked-title {
+    font-size: 1rem;
+  }
+
+  .picked-meta {
+    font-size: 0.8rem;
+  }
 }
 </style>

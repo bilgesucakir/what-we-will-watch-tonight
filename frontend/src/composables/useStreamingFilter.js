@@ -134,13 +134,17 @@ function persist(state) {
 /**
  * Holds the "only pick something we can stream" state: which region, which
  * services the group subscribes to, and whether the filter is switched on.
- * Fetches the region's provider list from the backend and remembers the
- * choice in localStorage.
+ *
+ * The filter always starts switched OFF -- `enabled` is never persisted, so a
+ * fresh page load shows an unticked box and makes no network request. The
+ * region's provider list is fetched lazily the first time the box is ticked.
+ * Region + picked services ARE remembered, so ticking the box brings back the
+ * previous choice.
  */
 export function useStreamingFilter() {
   const stored = loadStored()
 
-  const enabled = ref(stored.enabled === true)
+  const enabled = ref(false)
   // May be null when the browser gives us nothing usable -- the UI then asks
   // the user to pick a region before the filter can do anything.
   const region = ref(stored.region || detectRegion())
@@ -175,18 +179,30 @@ export function useStreamingFilter() {
     selectedIds.value = []
   }
 
-  // Re-fetch when the region changes, and drop selections that region doesn't offer.
-  watch(region, async () => {
+  // Load the region's list, then drop any picked services it doesn't carry.
+  async function refreshProviders() {
     await loadProviders()
-    const available = new Set(providers.value.map((p) => p.id))
-    selectedIds.value = selectedIds.value.filter((id) => available.has(id))
+    if (providers.value.length) {
+      const available = new Set(providers.value.map((p) => p.id))
+      selectedIds.value = selectedIds.value.filter((id) => available.has(id))
+    }
+  }
+
+  // Fetch the list the first time the box is ticked (and never before).
+  watch(enabled, (on) => {
+    if (on && providers.value.length === 0) refreshProviders()
   })
 
-  watch([enabled, region, selectedIds], () => {
-    persist({ enabled: enabled.value, region: region.value, providers: selectedIds.value })
-  }, { deep: true })
+  // Re-fetch on a region change while the filter is on; otherwise just drop
+  // the now-stale list so it's re-fetched next time the box is ticked.
+  watch(region, () => {
+    if (enabled.value) refreshProviders()
+    else providers.value = []
+  })
 
-  loadProviders()
+  watch([region, selectedIds], () => {
+    persist({ region: region.value, providers: selectedIds.value })
+  }, { deep: true })
 
   // The filter only bites when it's on, a region is set, AND a service is picked.
   const active = computed(
