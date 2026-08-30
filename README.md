@@ -1,10 +1,11 @@
 # what-we-will-watch-tonight
 
-Spring Boot and Vue-based watchlist tool for Jsoup-driven Letterboxd
-scraping, cross-user intersection matching, and CSV list export.
+Spring Boot and Vue tool that scrapes public Letterboxd watchlists with
+Jsoup, intersects them across up to four people, and hands back one random
+film to watch — optionally only ones you can stream tonight — with TMDB
+posters, ratings and runtimes, plus a CSV export of the full overlap.
 
-Scrapes public Letterboxd watchlist pages with Jsoup and helps you pick
-something to watch, in two modes (two tabs in the UI):
+Helps you pick something to watch, in two modes (two tabs in the UI):
 
 - **Just Me** — a random pick from one person's own watchlist
 - **Us** — a random pick from what a group's watchlists have in common
@@ -24,9 +25,8 @@ list.
   scraped for the rating, runtime and exact TMDB id (so the poster is the
   right one, not a title guess)
 - **2–4 people in the "Us" tab** — start with two username fields, "**+ Add
-  person**" for a third and fourth (each removable inline); the sofa in the
-  background grows with the group and each verified user's avatar takes a
-  cushion
+  person**" for a third and fourth (each removable inline); each verified
+  user's Letterboxd avatar appears above the form as they're added
 - **"Only pick something we can stream"** — an optional filter under the
   buttons: your country is detected from the browser (timezone, falling
   back to locale), then you tick the streaming services you have and the
@@ -47,6 +47,11 @@ list.
 - **Live username validation** — as you type, checks whether each username
   exists on Letterboxd and whether its watchlist is public, keeping the
   buttons disabled until ready
+- **No duplicate people** — the same username in two fields is flagged
+  inline ("already in the list"), never fetched a second time, and keeps
+  the buttons disabled; the API rejects it too
+- **Responsive** — a single layout that adapts from desktop down to phone
+  widths, tested against mobile Safari
 - **CSV export** — from the full-list view, download the results as CSV,
   formatted to import cleanly into a new Letterboxd list
 
@@ -199,6 +204,7 @@ Returns `400` with `{ "error": "..." }`, one distinct message per problem:
 
 - not between 2 and 4 usernames
 - a username is blank
+- two of the usernames are the same (case-insensitive)
 - a user doesn't exist on Letterboxd
 - a watchlist is private or empty
 
@@ -207,7 +213,26 @@ Returns `400` with `{ "error": "..." }`, one distinct message per problem:
 Single-user counterpart to `/api/intersect` — same response shape (with the
 same `rating` / `length` rules), same `&random=true` behavior (including the
 `&provider=` / `&region=` streaming filter), but for one person's own
-watchlist.
+watchlist. Returns `200` with a JSON array of that user's films, sorted
+alphabetically by title:
+
+```json
+[
+  {
+    "title": "The Outrun (2024)",
+    "url": "https://letterboxd.com/film/the-outrun/",
+    "year": 2024,
+    "rating": null,
+    "length": null,
+    "posterUrl": "https://image.tmdb.org/t/p/w342/abc123.jpg",
+    "providers": []
+  }
+]
+```
+
+With `&random=true` the array holds 0 or 1 elements, and that one film has
+`rating`, `length` and (when the streaming filter is on) `providers`
+filled in — exactly as for `/api/intersect`.
 
 Returns `400` with `{ "error": "..." }` — a distinct message for a blank
 username, a user that doesn't exist, and a private/empty watchlist.
