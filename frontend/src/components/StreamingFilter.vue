@@ -59,7 +59,7 @@ defineProps({
       </template>
 
       <p class="streaming-scope">
-        Applies to the 🎲 random pick only 
+        Applies to the 🎲 random pick only
       </p>
     </div>
   </div>

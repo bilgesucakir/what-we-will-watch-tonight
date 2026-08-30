@@ -86,15 +86,16 @@ describe('TwoPlusUserTab', () => {
     expect(wrapper.find('.add-person').exists()).toBe(false)
   })
 
-  it('emits the group size so the sofa background can follow', async () => {
+  it('grows the sofa image as people are added and removed', async () => {
     const wrapper = mount(TwoPlusUserTab)
-    expect(wrapper.emitted('sofa-count').at(-1)).toEqual([2])
+    const sofaSrc = () => wrapper.find('.sofa-img').attributes('src')
+    expect(sofaSrc()).toContain('sofa-2')
 
     await wrapper.find('.add-person').trigger('click')
-    expect(wrapper.emitted('sofa-count').at(-1)).toEqual([3])
+    expect(sofaSrc()).toContain('sofa-3')
 
     await wrapper.find('.remove-person').trigger('click')
-    expect(wrapper.emitted('sofa-count').at(-1)).toEqual([2])
+    expect(sofaSrc()).toContain('sofa-2')
   })
 
   it('removing the third person shifts the fourth up into its place', async () => {

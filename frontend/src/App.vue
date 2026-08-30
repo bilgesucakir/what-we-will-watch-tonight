@@ -1,26 +1,12 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import SingleUserTab from './components/SingleUserTab.vue'
 import TwoPlusUserTab from './components/TwoPlusUserTab.vue'
 
 const activeTab = ref('two')
-
-// How many people the "Us" tab currently has inputs for (2-4); it emits this
-// so the sofa background can match the group size.
-const groupSize = ref(2)
-
-const SOFA_BY_GROUP_SIZE = { 2: 'app-background--two', 3: 'app-background--three', 4: 'app-background--four' }
-
-const backgroundClass = computed(() =>
-  activeTab.value === 'two'
-    ? SOFA_BY_GROUP_SIZE[groupSize.value] ?? 'app-background--two'
-    : 'app-background--single'
-)
 </script>
 
 <template>
-  <div class="app-background" :class="backgroundClass" aria-hidden="true"></div>
-
   <a
     class="github-link"
     href="https://github.com/bilgesucakir/what-we-will-watch-tonight"
@@ -60,64 +46,28 @@ const backgroundClass = computed(() =>
       </button>
     </nav>
 
-    <TwoPlusUserTab v-if="activeTab === 'two'" @sofa-count="groupSize = $event" />
+    <TwoPlusUserTab v-if="activeTab === 'two'" />
     <SingleUserTab v-else />
   </main>
 </template>
 
 <style scoped>
+/*
+ * The page fill. `html` carries the same navy as the sofa banner's ground so
+ * the very top of the page (and any iOS overscroll) matches it, never black.
+ * `body` lays the gradient over that, starting from the exact same navy so
+ * they're seamless, and `display: flow-root` stops `.page`'s top margin from
+ * collapsing out and letting the html colour show through as a strip.
+ */
+:global(html) {
+  background: #0b0f1c;
+}
+
 :global(body) {
-  background: #121212;
   margin: 0;
-}
-
-/*
- * Full-viewport background layer, swapped per tab. Images live in
- * src/assets/backgrounds/ and are bundled by Vite via the url() refs below.
- * Pin the image's bottom-right (where the sofa is) to the viewport's
- * bottom-right so the sofa stays put across sizes; the seated-avatar layers
- * in SingleUserTab / TwoPlusUserTab assume this + a 1760x1040 image.
- */
-.app-background {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background-color: #121212;
-  background-size: cover;
-  background-position: right bottom;
-  background-repeat: no-repeat;
-}
-
-/*
- * Scrim over the image, heavier at the top where the UI text sits and light
- * toward the bottom so the sofa stays visible.
- */
-.app-background::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    to bottom,
-    rgba(18, 18, 18, 0.8) 0%,
-    rgba(18, 18, 18, 0.5) 35%,
-    rgba(18, 18, 18, 0.1) 100%
-  );
-}
-
-.app-background--single {
-  background-image: url('./assets/backgrounds/sofa-for-one.png');
-}
-
-.app-background--two {
-  background-image: url('./assets/backgrounds/sofa-for-two.png');
-}
-
-.app-background--three {
-  background-image: url('./assets/backgrounds/sofa-for-three.png');
-}
-
-.app-background--four {
-  background-image: url('./assets/backgrounds/sofa-for-four.png');
+  min-height: 100vh;
+  display: flow-root;
+  background: linear-gradient(to bottom, #0b0f1c 0%, #0b0f1c 40%, #08090f 72%, #05070d 100%);
 }
 
 .github-link {
@@ -130,6 +80,7 @@ const backgroundClass = computed(() =>
   color: #e0e0e0;
   font-size: 0.9rem;
   text-decoration: none;
+  z-index: 1;
 }
 
 .github-link:hover {
@@ -137,7 +88,7 @@ const backgroundClass = computed(() =>
 }
 
 .page {
-  max-width: 32rem;
+  max-width: 34rem;
   margin: 3rem auto;
   padding: 0 1.5rem;
   font-family: system-ui, sans-serif;
@@ -146,7 +97,7 @@ const backgroundClass = computed(() =>
 
 .tabs {
   display: flex;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   border-bottom: 1px solid #2e2e2e;
 }
 
@@ -172,5 +123,22 @@ const backgroundClass = computed(() =>
 .tab.active {
   color: #4a8f63;
   border-bottom-color: #4a8f63;
+}
+
+/* --- Mobile (keep the 640px breakpoint in sync with the tab components) --- */
+@media (max-width: 640px) {
+  .page {
+    margin: 1.5rem auto 4rem;
+    padding: 0 1rem;
+  }
+
+  .github-link span {
+    display: none;
+  }
+
+  .github-link {
+    top: 0.75rem;
+    right: 0.75rem;
+  }
 }
 </style>

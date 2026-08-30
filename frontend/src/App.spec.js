@@ -46,22 +46,22 @@ describe('App', () => {
     )
   })
 
-  it('swaps the sofa background as the group grows and shrinks', async () => {
+  it('swaps the sofa image as the group grows and shrinks', async () => {
     const wrapper = mount(App)
-    const bg = () => wrapper.find('.app-background')
+    const sofaSrc = () => wrapper.find('.sofa-img').attributes('src')
 
-    expect(bg().classes()).toContain('app-background--two')
-
-    await wrapper.find('.add-person').trigger('click')
-    expect(bg().classes()).toContain('app-background--three')
+    expect(sofaSrc()).toContain('sofa-2')
 
     await wrapper.find('.add-person').trigger('click')
-    expect(bg().classes()).toContain('app-background--four')
+    expect(sofaSrc()).toContain('sofa-3')
+
+    await wrapper.find('.add-person').trigger('click')
+    expect(sofaSrc()).toContain('sofa-4')
 
     await wrapper.find('.remove-person').trigger('click')
-    expect(bg().classes()).toContain('app-background--three')
+    expect(sofaSrc()).toContain('sofa-3')
 
     await wrapper.findAll('.tab')[1].trigger('click')
-    expect(bg().classes()).toContain('app-background--single')
+    expect(sofaSrc()).toContain('sofa-1')
   })
 })
