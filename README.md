@@ -1,20 +1,28 @@
 # what-we-will-watch-tonight
 
-Spring Boot and Vue tool that scrapes public Letterboxd watchlists with
-Jsoup, intersects them across up to four people, and hands back one random
-film to watch — optionally only ones you can stream tonight — with TMDB
-posters, ratings and runtimes, plus a CSV export of the full overlap.
+Spring Boot + Vue tool that scrapes public Letterboxd watchlists with Jsoup
+and helps a group decide what to watch.
 
-Helps you pick something to watch, in two modes (two tabs in the UI):
+It intersects up to four people's watchlists and hands back **one random
+film** — optionally only ones you can stream tonight — with its TMDB
+poster, rating and runtime. The full overlap is one click away, and
+exports as CSV ready to import into a new Letterboxd list.
 
-- **Just Me** — a random pick from one person's own watchlist
-- **Us** — a random pick from what a group's watchlists have in common
-  (2 to 4 people), or the full overlap as a browsable list
+Two modes, one per tab:
 
-Both modes hand back a single random pick by default — for when you just
-want an answer, not a list to argue about — with the full film list still
-one click away, plus a CSV export ready to import into a new Letterboxd
-list.
+| Tab | What it picks from |
+|---|---|
+| **Just Me** | one person's own watchlist |
+| **Us** | what 2–4 people's watchlists have in common |
+
+Both default to a single random pick — for when you want an answer, not a
+list to argue about.
+
+## Demo
+
+<!-- Add a demo video: edit this file on github.com and drag an .mp4/.mov/.webm
+     into the editor. GitHub uploads it and renders an inline player; paste the
+     resulting https://github.com/user-attachments/assets/... URL on its own line. -->
 
 ## Features
 
@@ -22,8 +30,7 @@ list.
   one random film (from one watchlist, or from the overlap of 2–4) and
   shows it front and center with its poster, average Letterboxd rating and
   runtime. Only the picked film is enriched — its Letterboxd page is
-  scraped for the rating, runtime and exact TMDB id (so the poster is the
-  right one, not a title guess)
+  scraped for the rating, runtime and exact TMDB id
 - **2–4 people in the "Us" tab** — start with two username fields, "**+ Add
   person**" for a third and fourth (each removable inline); each verified
   user's Letterboxd avatar appears above the form as they're added
@@ -33,9 +40,7 @@ list.
   random pick is re-rolled until it lands on a film available on one of
   them (the pick card then shows where it's streaming). Availability comes
   from TMDB's watch-provider data, powered by JustWatch. Region + services
-  are remembered in your browser. It only affects the random pick —
-  asking for the full list switches the filter off and clears it, so
-  there's never any doubt about whether a list is filtered
+  are remembered in your browser.
 - **"Return all films"** — a smaller secondary action in both tabs for
   browsing the full list as a poster grid, sorted alphabetically, each
   linking to its Letterboxd page
@@ -51,7 +56,7 @@ list.
   inline ("already in the list"), never fetched a second time, and keeps
   the buttons disabled; the API rejects it too
 - **Responsive** — a single layout that adapts from desktop down to phone
-  widths, tested against mobile Safari
+  widths
 - **CSV export** — from the full-list view, download the results as CSV,
   formatted to import cleanly into a new Letterboxd list
 
@@ -134,6 +139,18 @@ writes a v8 report to **`frontend/coverage/index.html`** (100% line / ~95% branc
 
 Interactive docs (Swagger UI) are served at `/swagger-ui.html` whenever the
 app is running; the raw OpenAPI spec is at `/v3/api-docs`.
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/intersect?user=…&user=…` | Films on every one of 2–4 watchlists, or one random pick |
+| `GET /api/watchlist?user=…` | One user's watchlist, or one random pick |
+| `GET /api/streaming-providers?region=…` | Streaming services in a region (builds the filter chips) |
+| `GET /api/underwatched-pick` | One random film from a curated underseen list |
+| `GET /api/users/{username}/exists` | Username + public-watchlist check, for live validation |
+
+All film-returning endpoints share one response builder (`FilmResponseService`),
+and every `400` is shaped by a `@RestControllerAdvice` (`ApiExceptionHandler`)
+so failures always look the same.
 
 ### `GET /api/intersect?user={username}&user={username}[&user=…]`
 
@@ -257,11 +274,6 @@ Returns `200` with a single film (same object shape as one array element
 above — poster, `rating`, `length` all filled in) drawn at random from the
 curated underwatched list, or `204` if that list is empty. The frontend
 calls this when `/api/intersect` comes back with nothing in common.
-
-All film-returning endpoints share the same response-building logic
-(`FilmResponseService`) for the "full list vs. one random pick, with poster
-lookups" behavior. Every `400` is shaped by a `@RestControllerAdvice`
-(`ApiExceptionHandler`) so failures always look the same.
 
 ### `GET /api/users/{username}/exists`
 
