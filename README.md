@@ -33,13 +33,11 @@ https://github.com/user-attachments/assets/86a14294-cb2b-41a1-8528-61a1ebd909a5
 - **2–4 people in the "Us" tab** — start with two username fields, "**+ Add
   person**" for a third and fourth (each removable inline); each verified
   user's Letterboxd avatar appears above the form as they're added
-- **"Only pick something we can stream"** — an optional filter under the
-  buttons: your country is detected from the browser (timezone, falling
-  back to locale), then you tick the streaming services you have and the
-  random pick is re-rolled until it lands on a film available on one of
-  them (the pick card then shows where it's streaming). Availability comes
-  from TMDB's watch-provider data, powered by JustWatch. Region + services
-  are remembered in your browser.
+- **"Only pick something we can stream"** — an optional filter: pick your
+  country (auto-detected) and the streaming services you have, and the
+  random pick is limited to films available on them. If nothing shared is,
+  you still get a pick, flagged as not on your services. Availability from
+  TMDB / JustWatch, remembered in your browser.
 - **"Return all films"** — a smaller secondary action in both tabs for
   browsing the full list as a poster grid, sorted alphabetically, each
   linking to its Letterboxd page
@@ -206,15 +204,14 @@ occasionally repeat the previous pick.
 
 **Streaming filter.** Add `&provider={tmdbId}` (repeatable) **and**
 `&region={ISO-3166-1}` alongside `&random=true` to restrict the pick to
-films streamable on those services. Both are needed — there's no default
-region; the frontend detects it from the browser (timezone, then locale).
-The backend walks a shuffled overlap, checking each candidate's TMDB
-watch-provider data (subscription / free / ad-supported — not rent or buy)
-for the region, and returns the first film on one of the given services,
-with its `providers` filled in. If nothing in the overlap is streamable on
-them it still returns a film (so the UI can say "not on your services").
-The params are ignored without `&random=true`, or if either is missing.
-Get the list of provider ids for a region from `/api/streaming-providers`.
+films streamable on those services (subscription / free / ad-supported —
+not rent or buy), per TMDB's watch-provider data for that region. Both
+params are required — there's no default region. The response is a random
+film that's on one of the given services, with `providers` filled in; if
+none of the shared films are, it's a random pick with `providers` you can
+check against your selection. The params are ignored without
+`&random=true`. Get provider ids for a region from
+`/api/streaming-providers`.
 
 Returns `400` with `{ "error": "..." }`, one distinct message per problem:
 
