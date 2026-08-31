@@ -20,9 +20,8 @@ list to argue about.
 
 ## Demo
 
-<!-- Add a demo video: edit this file on github.com and drag an .mp4/.mov/.webm
-     into the editor. GitHub uploads it and renders an inline player; paste the
-     resulting https://github.com/user-attachments/assets/... URL on its own line. -->
+https://github.com/user-attachments/assets/86a14294-cb2b-41a1-8528-61a1ebd909a5
+
 
 ## Features
 
