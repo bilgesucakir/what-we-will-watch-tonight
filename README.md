@@ -171,7 +171,12 @@ title:
 
 - `year` is parsed from the title (not the slug, which can carry a
   different disambiguation year); `null` if it couldn't be determined.
-- `posterUrl` is `null` if `TMDB_API_KEY` isn't set or nothing matches.
+- `posterUrl` is `null` if `TMDB_API_KEY` isn't set or nothing matches. In
+  the full list it's a TMDB title search (movies **and** TV — Letterboxd
+  lists some mini-series as films) ranked by exact title (English or
+  original-language), then `year`, then popularity; if that's still
+  ambiguous the film's Letterboxd page is scraped for the exact TMDB id,
+  same as a random pick.
 - `rating` (average Letterboxd rating, 0–5) and `length` (runtime in
   minutes) are **only filled in for a single random pick** — see below.
   In the full list they're always `null`.

@@ -4,6 +4,8 @@ import com.whatwewillwatchtonight.controller.dto.FilmMatchDto;
 import com.whatwewillwatchtonight.model.Film;
 import com.whatwewillwatchtonight.model.FilmDetails;
 import com.whatwewillwatchtonight.model.StreamingProvider;
+import com.whatwewillwatchtonight.model.TmdbRef;
+import com.whatwewillwatchtonight.service.TmdbPosterService.PosterMatch;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -15,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -23,6 +26,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class FilmResponseServiceTest {
+
+    private static final TmdbRef MOVIE_REF = new TmdbRef(693134, "movie");
 
     private TmdbPosterService posterService;
     private TmdbStreamingService streamingService;
@@ -35,16 +40,18 @@ class FilmResponseServiceTest {
         streamingService = mock(TmdbStreamingService.class);
         scraperService = mock(LetterboxdScraperService.class);
         when(scraperService.fetchFilmDetails(any())).thenReturn(FilmDetails.empty());
+        when(scraperService.fetchTmdbRef(any())).thenReturn(null);
+        when(posterService.findPoster(any(), any())).thenReturn(new PosterMatch(null, true));
         service = new FilmResponseService(
                 posterService, streamingService, scraperService, Executors.newVirtualThreadPerTaskExecutor());
     }
 
     @Test
     void nonRandomModeReturnsAllFilmsWithPostersAndNoDetailLookups() {
-        when(posterService.findPosterUrl(eq("Dune: Part Two (2024)"), eq(2024)))
-                .thenReturn("https://image.tmdb.org/t/p/w342/dune.jpg");
-        when(posterService.findPosterUrl(eq("Anora (2024)"), eq(2024)))
-                .thenReturn("https://image.tmdb.org/t/p/w342/anora.jpg");
+        when(posterService.findPoster(eq("Dune: Part Two (2024)"), eq(2024)))
+                .thenReturn(new PosterMatch("https://image.tmdb.org/t/p/w342/dune.jpg", true));
+        when(posterService.findPoster(eq("Anora (2024)"), eq(2024)))
+                .thenReturn(new PosterMatch("https://image.tmdb.org/t/p/w342/anora.jpg", true));
 
         List<Film> films = List.of(
                 new Film("dune-part-two", "Dune: Part Two (2024)", 2024),
@@ -59,12 +66,37 @@ class FilmResponseServiceTest {
                 .containsExactlyInAnyOrder("https://image.tmdb.org/t/p/w342/dune.jpg", "https://image.tmdb.org/t/p/w342/anora.jpg");
         assertThat(dtos).extracting(FilmMatchDto::rating, FilmMatchDto::length).containsOnly(tuple(null, null));
         verify(scraperService, never()).fetchFilmDetails(any());
+        verify(scraperService, never()).fetchTmdbRef(any());
+    }
+
+    @Test
+    void nonRandomModeConfirmsTheExactIdWhenTheTitleSearchIsNotConfident() {
+        when(posterService.findPoster(eq("Ghosts (2020)"), eq(2020)))
+                .thenReturn(new PosterMatch("https://image.tmdb.org/t/p/w342/wrong.jpg", false));
+        when(scraperService.fetchTmdbRef("ghosts-2020-2")).thenReturn(new TmdbRef(726413, "movie"));
+        when(posterService.findPosterUrlByTmdbId(726413, "movie"))
+                .thenReturn("https://image.tmdb.org/t/p/w342/hayaletler.jpg");
+
+        List<FilmMatchDto> dtos = service.toDtos(
+                List.of(new Film("ghosts-2020-2", "Ghosts (2020)", 2020)), false);
+
+        assertThat(dtos.get(0).posterUrl()).isEqualTo("https://image.tmdb.org/t/p/w342/hayaletler.jpg");
+    }
+
+    @Test
+    void nonRandomModeKeepsTheSearchGuessWhenTheExactLookupComesUpEmpty() {
+        when(posterService.findPoster(any(), any()))
+                .thenReturn(new PosterMatch("https://image.tmdb.org/t/p/w342/guess.jpg", false));
+        when(scraperService.fetchTmdbRef(any())).thenReturn(null);
+
+        List<FilmMatchDto> dtos = service.toDtos(
+                List.of(new Film("obscure", "Obscure (2020)", 2020)), false);
+
+        assertThat(dtos.get(0).posterUrl()).isEqualTo("https://image.tmdb.org/t/p/w342/guess.jpg");
     }
 
     @Test
     void nonRandomModeSortsFilmsAlphabeticallyByTitleCaseInsensitive() {
-        when(posterService.findPosterUrl(any(), any())).thenReturn(null);
-
         List<Film> films = List.of(
                 new Film("the-substance", "The Substance (2024)", 2024),
                 new Film("anora", "anora (2024)", 2024),
@@ -78,7 +110,6 @@ class FilmResponseServiceTest {
 
     @Test
     void randomModeReturnsExactlyOneFilmWithItsRatingAndRuntime() {
-        when(posterService.findPosterUrl(any(), any())).thenReturn("https://image.tmdb.org/t/p/w342/poster.jpg");
         when(scraperService.fetchFilmDetails(any())).thenReturn(new FilmDetails(4.1, 137, null));
 
         List<Film> films = List.of(
@@ -94,35 +125,33 @@ class FilmResponseServiceTest {
     }
 
     @Test
-    void randomModeUsesTheExactTmdbPosterWhenTheFilmPageHasAnId() {
-        when(scraperService.fetchFilmDetails(any())).thenReturn(new FilmDetails(4.1, 137, 693134));
-        when(posterService.findPosterUrlByTmdbId(693134))
+    void randomModeUsesTheExactTmdbPosterWhenTheFilmPageHasARef() {
+        when(scraperService.fetchFilmDetails(any())).thenReturn(new FilmDetails(4.1, 137, MOVIE_REF));
+        when(posterService.findPosterUrlByTmdbId(693134, "movie"))
                 .thenReturn("https://image.tmdb.org/t/p/w342/exact.jpg");
 
         List<FilmMatchDto> dtos = service.toDtos(
                 List.of(new Film("dune-part-two", "Dune: Part Two (2024)", 2024)), true);
 
         assertThat(dtos.get(0).posterUrl()).isEqualTo("https://image.tmdb.org/t/p/w342/exact.jpg");
-        verify(posterService, never()).findPosterUrl(any(), any());
+        verify(posterService, never()).findPoster(any(), any());
     }
 
     @Test
-    void randomModeFallsBackToATitleSearchWhenTheFilmPageHasNoTmdbId() {
+    void randomModeFallsBackToATitleSearchWhenTheFilmPageHasNoRef() {
         when(scraperService.fetchFilmDetails(any())).thenReturn(new FilmDetails(4.1, 137, null));
-        when(posterService.findPosterUrl(any(), any()))
-                .thenReturn("https://image.tmdb.org/t/p/w342/searched.jpg");
+        when(posterService.findPoster(any(), any()))
+                .thenReturn(new PosterMatch("https://image.tmdb.org/t/p/w342/searched.jpg", true));
 
         List<FilmMatchDto> dtos = service.toDtos(
                 List.of(new Film("dune-part-two", "Dune: Part Two (2024)", 2024)), true);
 
         assertThat(dtos.get(0).posterUrl()).isEqualTo("https://image.tmdb.org/t/p/w342/searched.jpg");
-        verify(posterService, never()).findPosterUrlByTmdbId(anyInt());
+        verify(posterService, never()).findPosterUrlByTmdbId(anyInt(), anyString());
     }
 
     @Test
     void randomModeLooksUpAPosterAndDetailsOnlyForTheOneFilmItReturns() {
-        when(posterService.findPosterUrl(any(), any())).thenReturn("https://image.tmdb.org/t/p/w342/poster.jpg");
-
         List<Film> films = List.of(
                 new Film("dune-part-two", "Dune: Part Two (2024)", 2024),
                 new Film("anora", "Anora (2024)", 2024),
@@ -130,20 +159,20 @@ class FilmResponseServiceTest {
 
         service.toDtos(films, true);
 
-        verify(posterService, times(1)).findPosterUrl(any(), any());
+        verify(posterService, times(1)).findPoster(any(), any());
         verify(scraperService, times(1)).fetchFilmDetails(any());
     }
 
     @Test
     void randomModeWithAStreamingFilterPicksAFilmThatIsOnASelectedService() {
-        when(posterService.findPosterUrlByTmdbId(anyInt())).thenReturn("poster.jpg");
-        when(scraperService.fetchFilmDetails("on-netflix")).thenReturn(new FilmDetails(4.0, 100, 200));
-        when(scraperService.fetchFilmDetails("nowhere")).thenReturn(new FilmDetails(3.0, 90, 300));
-        when(scraperService.fetchFilmDetails("also-nowhere")).thenReturn(new FilmDetails(3.5, 95, 400));
-        when(streamingService.streamingOptions(200, "US"))
+        when(posterService.findPosterUrlByTmdbId(anyInt(), anyString())).thenReturn("poster.jpg");
+        when(scraperService.fetchFilmDetails("on-netflix")).thenReturn(new FilmDetails(4.0, 100, new TmdbRef(200, "movie")));
+        when(scraperService.fetchFilmDetails("nowhere")).thenReturn(new FilmDetails(3.0, 90, new TmdbRef(300, "movie")));
+        when(scraperService.fetchFilmDetails("also-nowhere")).thenReturn(new FilmDetails(3.5, 95, new TmdbRef(400, "movie")));
+        when(streamingService.streamingOptions(200, "movie", "US"))
                 .thenReturn(List.of(new StreamingProvider(8, "Netflix", null)));
-        when(streamingService.streamingOptions(300, "US")).thenReturn(List.of());
-        when(streamingService.streamingOptions(400, "US"))
+        when(streamingService.streamingOptions(300, "movie", "US")).thenReturn(List.of());
+        when(streamingService.streamingOptions(400, "movie", "US"))
                 .thenReturn(List.of(new StreamingProvider(9, "Prime Video", null)));
 
         List<Film> films = List.of(
@@ -160,9 +189,9 @@ class FilmResponseServiceTest {
 
     @Test
     void randomModeWithAStreamingFilterHandsBackAFilmAnywayWhenNothingIsStreamable() {
-        when(posterService.findPosterUrlByTmdbId(anyInt())).thenReturn("poster.jpg");
-        when(scraperService.fetchFilmDetails(any())).thenReturn(new FilmDetails(3.0, 90, 300));
-        when(streamingService.streamingOptions(eq(300), eq("US"))).thenReturn(List.of());
+        when(posterService.findPosterUrlByTmdbId(anyInt(), anyString())).thenReturn("poster.jpg");
+        when(scraperService.fetchFilmDetails(any())).thenReturn(new FilmDetails(3.0, 90, new TmdbRef(300, "movie")));
+        when(streamingService.streamingOptions(eq(300), anyString(), eq("US"))).thenReturn(List.of());
 
         List<Film> films = List.of(
                 new Film("a", "A (2024)", 2024),

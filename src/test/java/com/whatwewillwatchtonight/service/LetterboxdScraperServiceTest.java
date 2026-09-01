@@ -347,7 +347,7 @@ class LetterboxdScraperServiceTest {
     }
 
     @Test
-    void fetchFilmDetailsReadsTheRatingRuntimeAndTmdbId() {
+    void fetchFilmDetailsReadsTheRatingRuntimeAndTmdbRef() {
         server.createContext("/film/dune-part-two/", exchange -> respond(exchange, 200, """
                 <html><head>
                   <meta name="twitter:label2" content="Average rating" />
@@ -361,7 +361,7 @@ class LetterboxdScraperServiceTest {
 
         assertThat(details.rating()).isEqualTo(4.38);
         assertThat(details.length()).isEqualTo(167);
-        assertThat(details.tmdbId()).isEqualTo(693134);
+        assertThat(details.tmdbRef()).isEqualTo(new com.whatwewillwatchtonight.model.TmdbRef(693134, "movie"));
     }
 
     @Test
@@ -374,14 +374,29 @@ class LetterboxdScraperServiceTest {
     }
 
     @Test
-    void fetchFilmDetailsHasNoTmdbIdForATvEntry() {
+    void fetchFilmDetailsCarriesTheTvRefForASeries() {
         server.createContext("/film/some-show/", exchange -> respond(exchange, 200, """
                 <html><body data-tmdb-type="tv" data-tmdb-id="555">
                   <p class="text-link text-footer"> 45&nbsp;mins </p>
                 </body></html>
                 """));
 
-        assertThat(scraperService.fetchFilmDetails("some-show").tmdbId()).isNull();
+        assertThat(scraperService.fetchFilmDetails("some-show").tmdbRef())
+                .isEqualTo(new com.whatwewillwatchtonight.model.TmdbRef(555, "tv"));
+    }
+
+    @Test
+    void fetchTmdbRefReadsJustTheIdAndType() {
+        server.createContext("/film/ghosts-2020-2/", exchange -> respond(exchange, 200,
+                "<html><body data-tmdb-type=\"movie\" data-tmdb-id=\"726413\">x</body></html>"));
+
+        assertThat(scraperService.fetchTmdbRef("ghosts-2020-2"))
+                .isEqualTo(new com.whatwewillwatchtonight.model.TmdbRef(726413, "movie"));
+    }
+
+    @Test
+    void fetchTmdbRefIsNullWhenThePageCannotBeFetched() {
+        assertThat(scraperService.fetchTmdbRef("missing-ref")).isNull();
     }
 
     @Test

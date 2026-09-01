@@ -2,6 +2,7 @@ package com.whatwewillwatchtonight.service;
 
 import com.whatwewillwatchtonight.model.Film;
 import com.whatwewillwatchtonight.model.FilmDetails;
+import com.whatwewillwatchtonight.model.TmdbRef;
 import org.jsoup.Connection;
 import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
@@ -152,21 +153,42 @@ public class LetterboxdScraperService {
             log.warn("Failed to fetch film page for '{}': {}", slug, e.getMessage());
             return FilmDetails.empty();
         }
-        return new FilmDetails(extractRating(page), extractRuntimeMinutes(page), extractTmdbId(page));
+        return new FilmDetails(extractRating(page), extractRuntimeMinutes(page), extractTmdbRef(page));
+    }
+
+    /**
+     * Fetches just the exact TMDB reference for one film -- a lighter call than
+     * {@link #fetchFilmDetails} for when only the poster needs confirming.
+     *
+     * @param slug the film's Letterboxd slug
+     * @return the {@link TmdbRef}, or {@code null} if the page can't be read or
+     *         carries no id
+     */
+    public TmdbRef fetchTmdbRef(String slug) {
+        try {
+            return extractTmdbRef(get(baseUrl + "/film/" + slug + "/"));
+        } catch (IOException e) {
+            log.warn("Failed to fetch film page for '{}': {}", slug, e.getMessage());
+            return null;
+        }
     }
 
     /**
      * @param page the fetched film page
-     * @return the exact TMDB movie id the film links to, or {@code null} if the
-     *         page doesn't carry one (e.g. it's a TV entry)
+     * @return the exact TMDB entry (movie or TV) the film links to, or {@code null}
+     *         if the page doesn't carry one
      */
-    private Integer extractTmdbId(Document page) {
-        Element body = page.selectFirst("body[data-tmdb-type=movie][data-tmdb-id]");
+    private TmdbRef extractTmdbRef(Document page) {
+        Element body = page.selectFirst("body[data-tmdb-type][data-tmdb-id]");
         if (body == null) {
             return null;
         }
+        String type = body.attr("data-tmdb-type");
+        if (!"movie".equals(type) && !"tv".equals(type)) {
+            return null;
+        }
         try {
-            return Integer.valueOf(body.attr("data-tmdb-id"));
+            return new TmdbRef(Integer.parseInt(body.attr("data-tmdb-id")), type);
         } catch (NumberFormatException e) {
             return null;
         }

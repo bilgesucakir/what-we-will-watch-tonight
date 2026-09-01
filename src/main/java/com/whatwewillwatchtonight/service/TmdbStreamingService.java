@@ -45,18 +45,20 @@ public class TmdbStreamingService {
     }
 
     /**
-     * @param movieId a TMDB movie id
-     * @param region  an ISO-3166-1 country code, e.g. {@code "US"}
-     * @return the streaming/free/ad services carrying that film in that region,
+     * @param id     a TMDB id
+     * @param type   {@code "tv"} for a series, anything else treated as a movie
+     * @param region an ISO-3166-1 country code, e.g. {@code "US"}
+     * @return the streaming/free/ad services carrying that title in that region,
      *         or empty if there's no API key, none, or the request fails
      */
-    public List<StreamingProvider> streamingOptions(int movieId, String region) {
+    public List<StreamingProvider> streamingOptions(int id, String type, String region) {
         if (apiKey.isBlank()) {
             return List.of();
         }
+        String path = ("tv".equals(type) ? "/tv/" : "/movie/") + id + "/watch/providers";
         try {
             WatchProvidersResponse response = restClient.get()
-                    .uri(uriBuilder -> uriBuilder.path("/movie/" + movieId + "/watch/providers")
+                    .uri(uriBuilder -> uriBuilder.path(path)
                             .queryParam("api_key", apiKey)
                             .build())
                     .retrieve()
@@ -68,8 +70,8 @@ public class TmdbStreamingService {
             RegionProviders forRegion = response.results().get(region.toUpperCase());
             return forRegion == null ? List.of() : forRegion.streamable();
         } catch (RestClientException e) {
-            log.warn("Failed to fetch watch providers for movie {} in {}: {}",
-                    movieId, region, e.getClass().getSimpleName());
+            log.warn("Failed to fetch watch providers for {} {} in {}: {}",
+                    type, id, region, e.getClass().getSimpleName());
             return List.of();
         }
     }

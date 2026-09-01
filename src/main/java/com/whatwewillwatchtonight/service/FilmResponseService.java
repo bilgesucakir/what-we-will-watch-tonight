@@ -4,6 +4,8 @@ import com.whatwewillwatchtonight.controller.dto.FilmMatchDto;
 import com.whatwewillwatchtonight.model.Film;
 import com.whatwewillwatchtonight.model.FilmDetails;
 import com.whatwewillwatchtonight.model.StreamingProvider;
+import com.whatwewillwatchtonight.model.TmdbRef;
+import com.whatwewillwatchtonight.service.TmdbPosterService.PosterMatch;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
@@ -94,8 +96,9 @@ public class FilmResponseService {
         for (int i = 0; i < tries; i++) {
             Film film = shuffled.get(i);
             FilmDetails details = scraperService.fetchFilmDetails(film.slug());
-            List<StreamingProvider> providers = (filter != null && details.tmdbId() != null)
-                    ? streamingService.streamingOptions(details.tmdbId(), filter.region())
+            TmdbRef ref = details.tmdbRef();
+            List<StreamingProvider> providers = (filter != null && ref != null)
+                    ? streamingService.streamingOptions(ref.id(), ref.type(), filter.region())
                     : List.of();
 
             FilmMatchDto dto = enrichedDto(film, details, providers);
@@ -109,17 +112,33 @@ public class FilmResponseService {
     }
 
     private FilmMatchDto plainDto(Film film) {
-        return dto(film, FilmDetails.empty(),
-                posterService.findPosterUrl(film.title(), film.year()), List.of());
+        // Title search is enough for most films. When it can't pin the title +
+        // year to a single result (common titles, obscure films, series), fall
+        // back to the exact TMDB id off the film's Letterboxd page.
+        PosterMatch match = posterService.findPoster(film.title(), film.year());
+        String posterUrl = match.url();
+        if (!match.confident()) {
+            String exact = posterByExactId(film.slug());
+            if (exact != null) {
+                posterUrl = exact;
+            }
+        }
+        return dto(film, FilmDetails.empty(), posterUrl, List.of());
     }
 
     private FilmMatchDto enrichedDto(Film film, FilmDetails details, List<StreamingProvider> providers) {
-        // The film page gives us the exact TMDB id -> exact poster; only fall
-        // back to a title+year search when we don't have one.
-        String posterUrl = details.tmdbId() != null
-                ? posterService.findPosterUrlByTmdbId(details.tmdbId())
-                : posterService.findPosterUrl(film.title(), film.year());
+        // The film page already gave us the exact TMDB ref -> exact poster; only
+        // fall back to a title+year search when we don't have one.
+        TmdbRef ref = details.tmdbRef();
+        String posterUrl = ref != null
+                ? posterService.findPosterUrlByTmdbId(ref.id(), ref.type())
+                : posterService.findPoster(film.title(), film.year()).url();
         return dto(film, details, posterUrl, providers);
+    }
+
+    private String posterByExactId(String slug) {
+        TmdbRef ref = scraperService.fetchTmdbRef(slug);
+        return ref == null ? null : posterService.findPosterUrlByTmdbId(ref.id(), ref.type());
     }
 
     private FilmMatchDto dto(Film film, FilmDetails details, String posterUrl, List<StreamingProvider> providers) {
