@@ -25,37 +25,57 @@ https://github.com/user-attachments/assets/86a14294-cb2b-41a1-8528-61a1ebd909a5
 
 ## Features
 
-- **Random pick, solo or group** — the primary action in both tabs: picks
-  one random film (from one watchlist, or from the overlap of 2–4) and
-  shows it front and center with its poster, average Letterboxd rating and
-  runtime. Only the picked film is enriched — its Letterboxd page is
-  scraped for the rating, runtime and exact TMDB id
-- **2–4 people in the "Us" tab** — start with two username fields, "**+ Add
-  person**" for a third and fourth (each removable inline); each verified
-  user's Letterboxd avatar appears above the form as they're added
-- **"Pick something streamable"** — an optional filter: pick your
-  country (auto-detected) and the streaming services you have, and the
-  random pick is limited to films available on them. If nothing shared is,
-  you still get a pick, flagged as not on your services. Availability from
-  TMDB / JustWatch, remembered in your browser.
-- **"Return all films"** — a smaller secondary action in both tabs for
-  browsing the full list as a poster grid, sorted alphabetically, each
-  linking to its Letterboxd page
-- **Nothing in common?** — if a group's watchlists don't overlap at all,
-  the app hands back a random pick from a curated list of underwatched
-  films instead (seeded from Letterboxd's
+- **Random pick, solo or group**
+
+  The primary action in both tabs. Picks one random film — from one watchlist,
+  or from the overlap of 2–4 — and shows it front and center with its poster,
+  average Letterboxd rating and runtime. Only the picked film is enriched: its
+  Letterboxd page is scraped for the rating, runtime and exact TMDB id.
+
+- **2–4 people in the "Us" tab**
+
+  Start with two username fields. "**+ Add person**" adds a third and fourth,
+  each removable inline. Each verified user's Letterboxd avatar appears above
+  the form as they're added.
+
+- **"Pick something streamable"**
+
+  An optional filter. Pick your country (auto-detected) and the streaming
+  services you have; the random pick is then limited to films on them. If
+  nothing shared is, you still get a pick, flagged as not on your services.
+  Availability comes from TMDB / JustWatch and is remembered in your browser.
+
+- **"Return all films"**
+
+  A smaller secondary action in both tabs. Browses the full list as a poster
+  grid, sorted alphabetically, each poster linking to its Letterboxd page.
+
+- **Nothing in common?**
+
+  If a group's watchlists don't overlap at all, the app hands back a random
+  pick from a curated list of underwatched films instead. Seeded from
+  Letterboxd's
   [Top 100 Underseen Films](https://letterboxd.com/official/list/top-100-underseen-films/),
-  kept static in `src/main/resources/underwatched-films.json`)
-- **Live username validation** — as you type, checks whether each username
-  exists on Letterboxd and whether its watchlist is public, keeping the
-  buttons disabled until ready
-- **No duplicate people** — the same username in two fields is flagged
-  inline ("already in the list"), never fetched a second time, and keeps
-  the buttons disabled; the API rejects it too
-- **Responsive** — a single layout that adapts from desktop down to phone
-  widths
-- **CSV export** — from the full-list view, download the results as CSV,
-  formatted to import cleanly into a new Letterboxd list
+  kept static in `src/main/resources/underwatched-films.json`.
+
+- **Live username validation**
+
+  As you type, each username is checked against Letterboxd — does it exist, is
+  its watchlist public. The buttons stay disabled until every field is ready.
+
+- **No duplicate people**
+
+  The same username in two fields is flagged inline ("already in the list"),
+  never fetched twice, and keeps the buttons disabled. The API rejects it too.
+
+- **Responsive**
+
+  A single layout that adapts from desktop down to phone widths.
+
+- **CSV export**
+
+  From the full-list view, download the results as CSV — formatted to import
+  cleanly into a new Letterboxd list.
 
 ## Configuration
 
@@ -151,9 +171,9 @@ so failures always look the same.
 
 ### `GET /api/intersect?user={username}&user={username}[&user=…]`
 
-Pass the `user` parameter **2 to 4 times**. Returns `200` with a JSON array
-of the films on *every* one of those watchlists, sorted alphabetically by
-title:
+Pass `user` **2 to 4 times**. Two modes: the full overlap (default), or one
+random pick (`&random=true`). Both return `200` and a JSON array, sorted
+alphabetically by title, of the same object:
 
 ```json
 [
@@ -169,27 +189,36 @@ title:
 ]
 ```
 
-- `year` is parsed from the title (not the slug, which can carry a
-  different disambiguation year); `null` if it couldn't be determined.
-- `posterUrl` is `null` if `TMDB_API_KEY` isn't set or nothing matches. In
-  the full list it's a TMDB title search (movies **and** TV — Letterboxd
-  lists some mini-series as films) ranked by exact title (English or
-  original-language), then `year`, then popularity; if that's still
-  ambiguous the film's Letterboxd page is scraped for the exact TMDB id,
-  same as a random pick.
-- `rating` (average Letterboxd rating, 0–5) and `length` (runtime in
-  minutes) are **only filled in for a single random pick** — see below.
-  In the full list they're always `null`.
-- `providers` is only populated for a random pick made with the streaming
-  filter (see below); otherwise it's an empty array.
+| Field | Notes |
+|---|---|
+| `title` | Letterboxd title, with year. |
+| `url` | Letterboxd film page. |
+| `year` | Parsed from the title, not the slug. `null` if it can't be determined. |
+| `posterUrl` | TMDB poster. `null` if `TMDB_API_KEY` is unset or nothing matches. Resolved differently per mode — see below. |
+| `rating` | Average Letterboxd rating, 0–5. |
+| `length` | Runtime in minutes. |
+| `providers` | Streaming services carrying the film. |
 
-Add `&random=true` to get a single random film from the overlap instead of
-the full list — the response is still an array, just with 0 or 1 elements.
-That one film gets its Letterboxd page scraped for `rating`, `length` and
-the exact TMDB id, and the poster is fetched from that id rather than a
-title guess. There's no exclude/no-repeat parameter — every call
-(including "pick again") is an independent random draw, so it can
-occasionally repeat the previous pick.
+#### Full list (default)
+
+- Every film on all 2–4 watchlists.
+- `rating` and `length` are always `null`.
+- `providers` is always `[]`.
+- `posterUrl` comes from a TMDB title search over movies **and** TV
+  (Letterboxd lists some mini-series as films), ranked by exact title
+  (English or original-language), then `year`, then popularity.
+- If that search is still ambiguous, the Letterboxd page is scraped for the
+  exact TMDB entry — its id, and whether it's a film or a series.
+
+#### Random pick (`&random=true`)
+
+- One random film from the overlap. The array holds 0 or 1 elements.
+- `rating` and `length` are filled in, scraped from that film's Letterboxd
+  page.
+- The same page is scraped for the film's TMDB entry; `posterUrl` and any
+  streaming lookup use that entry, not a title guess.
+- Every call is an independent draw. There's no no-repeat parameter, so "pick
+  again" can repeat the last result.
 
 ```json
 [
@@ -207,32 +236,39 @@ occasionally repeat the previous pick.
 ]
 ```
 
-**Streaming filter.** Add `&provider={tmdbId}` (repeatable) **and**
-`&region={ISO-3166-1}` alongside `&random=true` to restrict the pick to
-films streamable on those services (subscription / free / ad-supported —
-not rent or buy), per TMDB's watch-provider data for that region. Both
-params are required — there's no default region. The response is a random
-film that's on one of the given services, with `providers` filled in; if
-none of the shared films are, it's a random pick with `providers` you can
-check against your selection. The params are ignored without
-`&random=true`. Get provider ids for a region from
-`/api/streaming-providers`.
+#### Streaming filter (random pick only)
 
-Returns `400` with `{ "error": "..." }`, one distinct message per problem:
+Add `&provider={tmdbId}` (repeatable) and `&region={ISO-3166-1}`, alongside
+`&random=true`.
+
+- Both params are required. There's no default region.
+- The pick is limited to films streamable on those services — subscription,
+  free or ad-supported. Not rent or buy.
+- Availability is TMDB's watch-provider data for that region.
+- Normal case: a random film on one of your services, `providers` filled in.
+- If nothing shared is streamable: you still get a random pick, and
+  `providers` lists where it *is* available, to check against your selection.
+- Ignored without `&random=true`.
+- Get provider ids from `/api/streaming-providers`.
+
+#### Errors
+
+`400` with `{ "error": "..." }`, one distinct message per problem:
 
 - not between 2 and 4 usernames
 - a username is blank
-- two of the usernames are the same (case-insensitive)
+- two usernames are the same (case-insensitive)
 - a user doesn't exist on Letterboxd
 - a watchlist is private or empty
 
 ### `GET /api/watchlist?user={username}`
 
-Single-user counterpart to `/api/intersect` — same response shape (with the
-same `rating` / `length` rules), same `&random=true` behavior (including the
-`&provider=` / `&region=` streaming filter), but for one person's own
-watchlist. Returns `200` with a JSON array of that user's films, sorted
-alphabetically by title:
+Single-user counterpart to `/api/intersect`, for one person's own watchlist.
+
+- Same response object and field rules.
+- Same two modes: full list (default) or random pick (`&random=true`).
+- Same streaming filter (`&provider=` / `&region=`), random pick only.
+- Returns `200` and a JSON array sorted alphabetically by title.
 
 ```json
 [
@@ -248,19 +284,18 @@ alphabetically by title:
 ]
 ```
 
-With `&random=true` the array holds 0 or 1 elements, and that one film has
-`rating`, `length` and (when the streaming filter is on) `providers`
-filled in — exactly as for `/api/intersect`.
+`400` with `{ "error": "..." }`, one distinct message per problem:
 
-Returns `400` with `{ "error": "..." }` — a distinct message for a blank
-username, a user that doesn't exist, and a private/empty watchlist.
+- a username is blank
+- a user doesn't exist on Letterboxd
+- a watchlist is private or empty
 
 ### `GET /api/streaming-providers?region={ISO-3166-1}`
 
-Returns `200` with the streaming services TMDB (via JustWatch) lists for
-movies in that region, most mainstream first — used to build the streaming
-filter's chips. `region` is required (`400` without it). Empty array if
-`TMDB_API_KEY` isn't set.
+Returns `200` and the streaming services TMDB (via JustWatch) lists for movies
+in that region, most mainstream first. Builds the streaming filter's chips.
+`region` is required — `400` without it. Empty array if `TMDB_API_KEY` is
+unset.
 
 ```json
 [
@@ -271,25 +306,26 @@ filter's chips. `region` is required (`400` without it). Empty array if
 
 ### `GET /api/underwatched-pick`
 
-Returns `200` with a single film (same object shape as one array element
-above — poster, `rating`, `length` all filled in) drawn at random from the
-curated underwatched list, or `204` if that list is empty. The frontend
-calls this when `/api/intersect` comes back with nothing in common.
+Returns `200` and a single film — same object shape as one array element
+above, with `posterUrl`, `rating` and `length` filled in. Drawn at random from
+the curated underwatched list. `204` if that list is empty. The frontend calls
+this when `/api/intersect` finds nothing in common.
 
 ### `GET /api/users/{username}/exists`
 
-Checks only the first watchlist page, without walking pagination. Used by
-the frontend to validate a username as it's typed, before enabling the
-submit button.
+Checks only the first watchlist page — no pagination. The frontend uses it to
+validate a username as it's typed, before enabling the submit button.
 
 ```json
 { "exists": true, "watchlistPublic": true, "avatarUrl": "https://a.ltrbxd.com/resized/avatar/upload/..." }
 ```
 
-- `exists: false` — the username doesn't exist on Letterboxd
-- `exists: true, watchlistPublic: false` — the user exists, but their
-  watchlist isn't public (or is empty)
-- `exists: true, watchlistPublic: true` — ready to use
+States:
 
-`avatarUrl` is `null` if the profile has no avatar in the page markup, and is
-rewritten to request a larger crop than the tiny one in the page source.
+- `exists: false` — the username doesn't exist on Letterboxd.
+- `exists: true, watchlistPublic: false` — the user exists, but the watchlist
+  isn't public (or is empty).
+- `exists: true, watchlistPublic: true` — ready to use.
+
+`avatarUrl` is `null` if the profile markup has no avatar. When present, it's
+rewritten to request a larger crop than the page's tiny one.
