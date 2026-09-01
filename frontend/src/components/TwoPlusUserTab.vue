@@ -166,7 +166,7 @@ function downloadCsv() {
 
   <h1>What We'll Watch Tonight</h1>
   <p class="subtitle">
-    Pick something from everyone's Letterboxd watchlists — or see everything you have in common.
+    Enter everyone's Letterboxd usernames and get one film that's on all of your watchlists.
   </p>
 
   <form class="form" @submit.prevent="findTonightsPick">
