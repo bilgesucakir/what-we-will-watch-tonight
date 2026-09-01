@@ -33,7 +33,7 @@ const checks = names.map((_, index) => useUsernameCheck(toRef(names, index), () 
 // Avatar URLs for the active people, in order, for the sofa banner.
 const seatedAvatars = computed(() => activeIndexes.value.map((i) => checks[i].avatarUrl.value))
 
-// "Only pick something we can stream" -- region + services + on/off, remembered
+// "Pick something streamable" -- region + services + on/off, remembered
 // in localStorage. Only affects the random pick.
 const streaming = useStreamingFilter()
 

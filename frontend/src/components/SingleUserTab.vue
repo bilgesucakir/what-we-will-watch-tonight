@@ -17,7 +17,7 @@ const pickStreamingNote = ref(null)
 // Set when "return all films" cleared an active streaming filter.
 const clearedFilterForList = ref(false)
 
-// "Only pick something we can stream" -- shared with the Us tab, remembered
+// "Pick something streamable" -- shared with the Us tab, remembered
 // in localStorage. Only affects the random pick.
 const streaming = useStreamingFilter()
 

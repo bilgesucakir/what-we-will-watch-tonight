@@ -33,7 +33,7 @@ https://github.com/user-attachments/assets/86a14294-cb2b-41a1-8528-61a1ebd909a5
 - **2–4 people in the "Us" tab** — start with two username fields, "**+ Add
   person**" for a third and fourth (each removable inline); each verified
   user's Letterboxd avatar appears above the form as they're added
-- **"Only pick something we can stream"** — an optional filter: pick your
+- **"Pick something streamable"** — an optional filter: pick your
   country (auto-detected) and the streaming services you have, and the
   random pick is limited to films available on them. If nothing shared is,
   you still get a pick, flagged as not on your services. Availability from
