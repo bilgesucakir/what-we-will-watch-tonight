@@ -20,8 +20,15 @@ list to argue about.
 
 ## Demo
 
-https://github.com/user-attachments/assets/86a14294-cb2b-41a1-8528-61a1ebd909a5
-
+<p align="center">
+  <video
+    src="https://github.com/bilgesucakir/what-we-will-watch-tonight/raw/main/docs/demo.mp4"
+    width="300"
+    controls
+    muted
+    playsinline>
+  </video>
+</p>
 
 ## Features
 
