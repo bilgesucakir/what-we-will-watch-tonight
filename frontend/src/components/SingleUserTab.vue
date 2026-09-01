@@ -17,7 +17,7 @@ const pickStreamingNote = ref(null)
 // Set when "return all films" cleared an active streaming filter.
 const clearedFilterForList = ref(false)
 
-// "Only pick something we can stream" -- shared with the Us tab, remembered
+// "Pick something streamable" -- shared with the Us tab, remembered
 // in localStorage. Only affects the random pick.
 const streaming = useStreamingFilter()
 
@@ -98,7 +98,7 @@ function downloadCsv() {
   <SofaStage :count="1" :avatars="[avatarUrl]" />
 
   <h1>What I'll Watch Tonight</h1>
-  <p class="subtitle">Pick something at random from just your own Letterboxd watchlist.</p>
+  <p class="subtitle">Enter your Letterboxd username and get a random film off your own watchlist.</p>
 
   <form class="form" @submit.prevent="findTonightsPick">
     <div class="field">

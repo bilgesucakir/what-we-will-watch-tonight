@@ -59,6 +59,8 @@ class TmdbStreamingServiceTest {
         server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
         server.createContext("/movie/693134/watch/providers", exchange ->
                 respond(exchange, 200, WATCH_PROVIDERS_RESPONSE));
+        server.createContext("/tv/551/watch/providers", exchange ->
+                respond(exchange, 200, WATCH_PROVIDERS_RESPONSE));
         server.createContext("/movie/500/watch/providers", exchange -> respond(exchange, 500, "boom"));
         server.createContext("/watch/providers/movie", exchange ->
                 respond(exchange, 200, PROVIDER_LIST_RESPONSE));
@@ -85,10 +87,16 @@ class TmdbStreamingServiceTest {
     }
 
     @Test
+    void usesTheTvEndpointForASeries() {
+        assertThat(serviceWith("test-key", baseUrl).streamingOptions(551, "tv", "TR"))
+                .extracting(StreamingProvider::name).containsExactly("Netflix", "MUBI Amazon Channel");
+    }
+
+    @Test
     void returnsFlatrateFreeAndAdProvidersForTheRegionDedupedById() {
         TmdbStreamingService service = serviceWith("test-key", baseUrl);
 
-        List<StreamingProvider> providers = service.streamingOptions(693134, "TR");
+        List<StreamingProvider> providers = service.streamingOptions(693134, "movie", "TR");
 
         assertThat(providers).extracting(StreamingProvider::name)
                 .containsExactly("Netflix", "MUBI Amazon Channel");
@@ -101,7 +109,7 @@ class TmdbStreamingServiceTest {
     void excludesRentAndBuyOnlyOptions() {
         TmdbStreamingService service = serviceWith("test-key", baseUrl);
 
-        assertThat(service.streamingOptions(693134, "TR"))
+        assertThat(service.streamingOptions(693134, "movie", "TR"))
                 .extracting(StreamingProvider::name)
                 .doesNotContain("Google Play");
     }
@@ -110,28 +118,28 @@ class TmdbStreamingServiceTest {
     void isCaseInsensitiveAboutTheRegionCode() {
         TmdbStreamingService service = serviceWith("test-key", baseUrl);
 
-        assertThat(service.streamingOptions(693134, "tr")).isNotEmpty();
+        assertThat(service.streamingOptions(693134, "movie", "tr")).isNotEmpty();
     }
 
     @Test
     void returnsEmptyWhenTheRegionHasNoData() {
         TmdbStreamingService service = serviceWith("test-key", baseUrl);
 
-        assertThat(service.streamingOptions(693134, "DE")).isEmpty();
+        assertThat(service.streamingOptions(693134, "movie", "DE")).isEmpty();
     }
 
     @Test
     void returnsEmptyWhenTheApiKeyIsBlank() {
         TmdbStreamingService service = serviceWith("", baseUrl);
 
-        assertThat(service.streamingOptions(693134, "TR")).isEmpty();
+        assertThat(service.streamingOptions(693134, "movie", "TR")).isEmpty();
     }
 
     @Test
     void returnsEmptyWhenTheRequestFails() {
         TmdbStreamingService service = serviceWith("test-key", baseUrl);
 
-        assertThat(service.streamingOptions(500, "TR")).isEmpty();
+        assertThat(service.streamingOptions(500, "movie", "TR")).isEmpty();
     }
 
     @Test

@@ -132,7 +132,7 @@ function persist(state) {
 }
 
 /**
- * Holds the "only pick something we can stream" state: which region, which
+ * Holds the "pick something streamable" state: which region, which
  * services the group subscribes to, and whether the filter is switched on.
  *
  * The filter always starts switched OFF -- `enabled` is never persisted, so a

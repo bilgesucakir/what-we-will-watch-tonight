@@ -33,7 +33,7 @@ const checks = names.map((_, index) => useUsernameCheck(toRef(names, index), () 
 // Avatar URLs for the active people, in order, for the sofa banner.
 const seatedAvatars = computed(() => activeIndexes.value.map((i) => checks[i].avatarUrl.value))
 
-// "Only pick something we can stream" -- region + services + on/off, remembered
+// "Pick something streamable" -- region + services + on/off, remembered
 // in localStorage. Only affects the random pick.
 const streaming = useStreamingFilter()
 
@@ -166,7 +166,7 @@ function downloadCsv() {
 
   <h1>What We'll Watch Tonight</h1>
   <p class="subtitle">
-    Pick something from everyone's Letterboxd watchlists — or see everything you have in common.
+    Enter your Letterboxd usernames and get one film that's on all of your watchlists.
   </p>
 
   <form class="form" @submit.prevent="findTonightsPick">

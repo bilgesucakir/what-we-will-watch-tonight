@@ -12,7 +12,7 @@ defineProps({
   <div class="streaming">
     <label class="streaming-toggle">
       <input type="checkbox" v-model="filter.enabled.value" />
-      Only pick something we can stream
+      Pick something streamable
     </label>
 
     <div v-if="filter.enabled.value" class="streaming-body">
