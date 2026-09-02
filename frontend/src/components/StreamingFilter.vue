@@ -53,7 +53,6 @@ const hiddenCount = computed(() => ordered.value.list.length - visibleProviders.
 
     <div v-if="filter.enabled.value" class="streaming-body">
       <label class="streaming-region">
-        Region
         <select v-model="filter.region.value">
           <option v-if="filter.needsRegion.value" :value="null" disabled>Choose your country…</option>
           <option v-for="r in REGIONS" :key="r.code" :value="r.code">{{ r.name }}</option>
