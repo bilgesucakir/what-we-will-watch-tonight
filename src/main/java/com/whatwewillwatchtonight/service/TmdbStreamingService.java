@@ -97,8 +97,9 @@ public class TmdbStreamingService {
             if (response == null || response.results() == null) {
                 return List.of();
             }
+            String regionCode = region.toUpperCase();
             return response.results().stream()
-                    .sorted(Comparator.comparingInt(TmdbProvider::displayPriority))
+                    .sorted(Comparator.comparingInt(p -> p.priorityFor(regionCode)))
                     .map(TmdbProvider::toModel)
                     .toList();
         } catch (RestClientException e) {
@@ -137,7 +138,21 @@ public class TmdbStreamingService {
             @JsonProperty("provider_id") int id,
             @JsonProperty("provider_name") String name,
             @JsonProperty("logo_path") String logoPath,
-            @JsonProperty("display_priority") int displayPriority) {
+            @JsonProperty("display_priority") int displayPriority,
+            @JsonProperty("display_priorities") Map<String, Integer> displayPriorities) {
+
+        /**
+         * TMDB's ordering hint for a region. The list endpoint returns a
+         * per-region map alongside a global fallback; the region-specific
+         * value is a better local order (e.g. TR ranks puhutv far higher
+         * than the global number would).
+         */
+        int priorityFor(String region) {
+            if (displayPriorities != null && displayPriorities.get(region) != null) {
+                return displayPriorities.get(region);
+            }
+            return displayPriority;
+        }
 
         StreamingProvider toModel() {
             return new StreamingProvider(id, name, logoPath == null ? null : LOGO_BASE_URL + logoPath);

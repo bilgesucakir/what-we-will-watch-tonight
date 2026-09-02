@@ -1,11 +1,47 @@
 <script setup>
-import { REGIONS } from '../composables/useStreamingFilter'
+import { ref, computed } from 'vue'
+import { REGIONS, CURATED_PROVIDERS } from '../composables/useStreamingFilter'
 
 // The shared state object returned by useStreamingFilter(), created in the
 // parent tab so the parent can read it when building the pick request.
-defineProps({
+const props = defineProps({
   filter: { type: Object, required: true }
 })
+
+// TMDB lists a long tail of niche / defunct services per region. Türkiye
+// gets a hand-picked list (CURATED_PROVIDERS); every other region uses TMDB's
+// region-specific order. Either way we show the top 14 and tuck the rest
+// behind a toggle.
+const COLLAPSED_LIMIT = 14
+const showAll = ref(false)
+
+// The provider list re-ordered -- curated picks first (in curated order), then
+// the rest as TMDB ranked them -- plus how many to show before "Show more".
+const ordered = computed(() => {
+  const all = props.filter.providers.value
+  const curated = CURATED_PROVIDERS[props.filter.region.value]
+  if (!curated) return { list: all, primaryCount: COLLAPSED_LIMIT }
+
+  const byName = new Map(all.map((p) => [p.name.toLowerCase(), p]))
+  const primary = curated.map((name) => byName.get(name.toLowerCase())).filter(Boolean)
+  const primaryIds = new Set(primary.map((p) => p.id))
+  const rest = all.filter((p) => !primaryIds.has(p.id))
+  return { list: [...primary, ...rest], primaryCount: primary.length }
+})
+
+// The visible slice, plus any already-ticked service from the hidden tail so a
+// remembered selection never disappears.
+const visibleProviders = computed(() => {
+  const { list, primaryCount } = ordered.value
+  if (showAll.value || list.length <= primaryCount) return list
+  const head = list.slice(0, primaryCount)
+  const tail = list
+    .slice(primaryCount)
+    .filter((p) => props.filter.selectedIds.value.includes(p.id))
+  return [...head, ...tail]
+})
+
+const hiddenCount = computed(() => ordered.value.list.length - visibleProviders.value.length)
 </script>
 
 <template>
@@ -33,10 +69,9 @@ defineProps({
       </p>
 
       <template v-else>
-        <p class="streaming-hint">Tick the services you have:</p>
         <div class="streaming-chips">
           <button
-            v-for="p in filter.providers.value"
+            v-for="p in visibleProviders"
             :key="p.id"
             type="button"
             class="chip"
@@ -49,6 +84,15 @@ defineProps({
         </div>
 
         <button
+          v-if="hiddenCount > 0 || showAll"
+          type="button"
+          class="streaming-more"
+          @click="showAll = !showAll"
+        >
+          {{ showAll ? 'Show fewer' : `Show ${hiddenCount} more` }}
+        </button>
+
+        <button
           v-if="filter.selectedIds.value.length"
           type="button"
           class="streaming-clear"
@@ -57,10 +101,6 @@ defineProps({
           Clear selection
         </button>
       </template>
-
-      <p class="streaming-scope">
-        Applies to the 🎲 random pick only
-      </p>
     </div>
   </div>
 </template>
@@ -128,14 +168,6 @@ defineProps({
   color: #999;
 }
 
-.streaming-scope {
-  margin: 0.15rem 0 0;
-  padding-top: 0.5rem;
-  border-top: 1px solid #2a3a30;
-  font-size: 0.75rem;
-  color: #888;
-}
-
 .streaming-chips {
   display: flex;
   flex-wrap: wrap;
@@ -168,6 +200,7 @@ defineProps({
   object-fit: cover;
 }
 
+.streaming-more,
 .streaming-clear {
   align-self: flex-start;
   background: transparent;
@@ -178,6 +211,12 @@ defineProps({
   padding: 0;
 }
 
+.streaming-more {
+  color: #999;
+  margin-top: -0.2rem;
+}
+
+.streaming-more:hover,
 .streaming-clear:hover {
   text-decoration: underline;
   background: transparent;

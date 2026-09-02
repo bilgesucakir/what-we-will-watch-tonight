@@ -45,8 +45,10 @@ class TmdbStreamingServiceTest {
     private static final String PROVIDER_LIST_RESPONSE = """
             {
               "results": [
-                { "provider_id": 8, "provider_name": "Netflix", "logo_path": "/netflix.jpg", "display_priority": 2 },
-                { "provider_id": 337, "provider_name": "Disney Plus", "logo_path": null, "display_priority": 1 }
+                { "provider_id": 8, "provider_name": "Netflix", "logo_path": "/netflix.jpg",
+                  "display_priority": 2, "display_priorities": { "TR": 0, "US": 2 } },
+                { "provider_id": 337, "provider_name": "Disney Plus", "logo_path": null,
+                  "display_priority": 1, "display_priorities": { "TR": 5, "US": 1 } }
               ]
             }
             """;
@@ -143,15 +145,25 @@ class TmdbStreamingServiceTest {
     }
 
     @Test
-    void listsRegionProvidersMostMainstreamFirst() {
+    void listsRegionProvidersByTheRegionSpecificPriority() {
         TmdbStreamingService service = serviceWith("test-key", baseUrl);
 
+        // Global priority would put Disney Plus first; TR's own map flips it.
         List<StreamingProvider> providers = service.providersInRegion("TR");
 
         assertThat(providers).extracting(StreamingProvider::name)
+                .containsExactly("Netflix", "Disney Plus");
+        assertThat(providers.get(0).logoUrl()).isEqualTo("https://image.tmdb.org/t/p/w45/netflix.jpg");
+        assertThat(providers.get(1).logoUrl()).isNull();
+    }
+
+    @Test
+    void fallsBackToTheGlobalPriorityWhenTheRegionIsntInTheMap() {
+        TmdbStreamingService service = serviceWith("test-key", baseUrl);
+
+        // Neither provider lists DE, so the global display_priority orders them.
+        assertThat(service.providersInRegion("DE")).extracting(StreamingProvider::name)
                 .containsExactly("Disney Plus", "Netflix");
-        assertThat(providers.get(0).logoUrl()).isNull();
-        assertThat(providers.get(1).logoUrl()).isEqualTo("https://image.tmdb.org/t/p/w45/netflix.jpg");
     }
 
     @Test

@@ -43,6 +43,30 @@ export const REGIONS = [
 
 const STORAGE_KEY = 'streamingFilter'
 
+// TMDB's provider ranking for Türkiye is unreliable -- its top slice is
+// mostly services nobody subscribes to -- so we pin a hand-picked list here,
+// in this order, matched against TMDB's `provider_name` (case-insensitive).
+// Anything not listed drops into the "Show more" tail. Every other region
+// just uses TMDB's own region-specific order.
+export const CURATED_PROVIDERS = {
+  TR: [
+    'Netflix',
+    'Amazon Prime Video',
+    'Amazon Video',
+    'Google Play Movies',
+    'Disney Plus',
+    'Apple TV Store',
+    'puhutv',
+    'MUBI',
+    'TOD TV',
+    'Crunchyroll',
+    'YouTube Premium',
+    'tabii',
+    'HBO Max',
+    'TV+'
+  ]
+}
+
 // Enough IANA-timezone -> ISO-3166 mappings to cover the REGIONS above; the
 // timezone reflects where the user physically is, which beats the UI language
 // (an English-language browser in Istanbul should still land on TR).
