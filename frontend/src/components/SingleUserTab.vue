@@ -17,13 +17,10 @@ const pickStreamingNote = ref(null)
 // Set when "return all films" cleared an active streaming filter.
 const clearedFilterForList = ref(false)
 
-// "Pick something streamable" -- shared with the Us tab, remembered
-// in localStorage. Only affects the random pick.
+// "Pick something streamable" state, remembered in localStorage. Random pick only.
 const streaming = useStreamingFilter()
 
-// The username the current `matches` results actually came from, captured
-// at search time so the CSV filename stays correct even if the input is
-// edited afterward without re-searching.
+// Username the current `matches` came from, captured so the CSV name stays right.
 const searchedUsername = ref('')
 
 const { exists, watchlistPublic, avatarUrl } = useUsernameCheck(username)

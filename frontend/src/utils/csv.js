@@ -1,6 +1,5 @@
-// Letterboxd's list-import CSV matches by title text, so the year needs to
-// come from its own column rather than staying baked into "Title (Year)" —
-// confirmed by test-importing a CSV built this way.
+// Letterboxd's list import matches by title text, so the year goes in its own
+// column, not baked into "Title (Year)".
 function csvTitle(title) {
   return title.replace(/\s*\(\d{4}\)\s*$/, '')
 }

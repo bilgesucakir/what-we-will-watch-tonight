@@ -142,10 +142,8 @@ public class TmdbStreamingService {
             @JsonProperty("display_priorities") Map<String, Integer> displayPriorities) {
 
         /**
-         * TMDB's ordering hint for a region. The list endpoint returns a
-         * per-region map alongside a global fallback; the region-specific
-         * value is a better local order (e.g. TR ranks puhutv far higher
-         * than the global number would).
+         * TMDB's ordering hint for a region: the per-region value if present
+         * (a better local order), else the global {@code display_priority}.
          */
         int priorityFor(String region) {
             if (displayPriorities != null && displayPriorities.get(region) != null) {

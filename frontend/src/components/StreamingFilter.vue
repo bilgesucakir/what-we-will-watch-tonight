@@ -107,9 +107,8 @@ const hiddenCount = computed(() => ordered.value.list.length - visibleProviders.
 
 <style scoped>
 /*
- * The checkbox + label always sit outside any chrome, a lightweight sibling of
- * the "+ Add person" control above. When ticked, only the region + chips get
- * wrapped in the bordered card -- the tick itself is never boxed in.
+ * The checkbox + label sit outside any chrome; only the region + chips get
+ * wrapped in the bordered card when ticked.
  */
 .streaming {
   display: flex;

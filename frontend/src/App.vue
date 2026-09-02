@@ -53,11 +53,9 @@ const activeTab = ref('two')
 
 <style scoped>
 /*
- * The page fill. `html` carries the same navy as the sofa banner's ground so
- * the very top of the page (and any iOS overscroll) matches it, never black.
- * `body` lays the gradient over that, starting from the exact same navy so
- * they're seamless, and `display: flow-root` stops `.page`'s top margin from
- * collapsing out and letting the html colour show through as a strip.
+ * Page fill. `html` carries the banner's navy so the top edge (and iOS
+ * overscroll) matches; `body` lays the gradient over it from the same navy.
+ * `flow-root` stops `.page`'s top margin collapsing out and showing a strip.
  */
 :global(html) {
   background: #0b0f1c;

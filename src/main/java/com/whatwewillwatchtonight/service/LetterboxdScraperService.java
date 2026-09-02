@@ -55,7 +55,7 @@ public class LetterboxdScraperService {
     public UsernameCheck checkUsername(String username) {
         try {
             // The plain profile page is blocked by Letterboxd's bot protection;
-            // the watchlist page isn't, and a 404 there still means the username doesn't exist.
+            // the watchlist page isn't, and a 404 there still means "no such user".
             Document firstPage = get(watchlistUrl(username, 1));
             boolean watchlistPublic = !firstPage.select("[data-item-slug]").isEmpty();
             return UsernameCheck.existsWithWatchlist(watchlistPublic, extractAvatarUrl(firstPage));

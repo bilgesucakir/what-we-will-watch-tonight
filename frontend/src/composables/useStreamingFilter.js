@@ -1,7 +1,7 @@
 import { ref, computed, watch } from 'vue'
 
-// Countries TMDB has watch-provider coverage for. The user can switch between
-// these; the one detected from the browser is preselected.
+// Countries with TMDB watch-provider coverage; the browser-detected one is
+// preselected.
 export const REGIONS = [
   { code: 'AR', name: 'Argentina' },
   { code: 'AU', name: 'Australia' },
@@ -43,11 +43,8 @@ export const REGIONS = [
 
 const STORAGE_KEY = 'streamingFilter'
 
-// TMDB's provider ranking for Türkiye is unreliable -- its top slice is
-// mostly services nobody subscribes to -- so we pin a hand-picked list here,
-// in this order, matched against TMDB's `provider_name` (case-insensitive).
-// Anything not listed drops into the "Show more" tail. Every other region
-// just uses TMDB's own region-specific order.
+// Hand-picked provider order for Türkiye (TMDB's own ranking is poor there).
+// Matched by name against TMDB's `provider_name`, case-insensitive.
 export const CURATED_PROVIDERS = {
   TR: [
     'Netflix',
@@ -67,9 +64,8 @@ export const CURATED_PROVIDERS = {
   ]
 }
 
-// Enough IANA-timezone -> ISO-3166 mappings to cover the REGIONS above; the
-// timezone reflects where the user physically is, which beats the UI language
-// (an English-language browser in Istanbul should still land on TR).
+// IANA timezone -> ISO-3166, covering REGIONS. Physical location beats UI
+// language: an English browser in Istanbul still lands on TR.
 const TIMEZONE_COUNTRY = {
   'America/Argentina/Buenos_Aires': 'AR',
   'Australia/Sydney': 'AU', 'Australia/Melbourne': 'AU', 'Australia/Brisbane': 'AU',
@@ -114,10 +110,8 @@ const TIMEZONE_COUNTRY = {
 }
 
 /**
- * Best guess at the user's country from the browser: the IANA timezone first
- * (physical location), then the locale's region subtag ("en-GB" -> GB). Returns
- * null when neither points at a region we offer, so the caller can decide what
- * to do rather than being handed a wrong default.
+ * Best guess at the user's country: browser timezone first, then the locale
+ * region subtag ("en-GB" -> GB). Null when neither matches a region we offer.
  */
 export function detectRegion() {
   const known = new Set(REGIONS.map((r) => r.code))
@@ -156,21 +150,15 @@ function persist(state) {
 }
 
 /**
- * Holds the "pick something streamable" state: which region, which
- * services the group subscribes to, and whether the filter is switched on.
- *
- * The filter always starts switched OFF -- `enabled` is never persisted, so a
- * fresh page load shows an unticked box and makes no network request. The
- * region's provider list is fetched lazily the first time the box is ticked.
- * Region + picked services ARE remembered, so ticking the box brings back the
- * previous choice.
+ * "Pick something streamable" state: region, picked services, on/off.
+ * `enabled` always starts OFF and isn't persisted; region + services are.
+ * The provider list is fetched lazily the first time the box is ticked.
  */
 export function useStreamingFilter() {
   const stored = loadStored()
 
   const enabled = ref(false)
-  // May be null when the browser gives us nothing usable -- the UI then asks
-  // the user to pick a region before the filter can do anything.
+  // Null when the browser gives nothing usable; the UI then asks for a region.
   const region = ref(stored.region || detectRegion())
   const selectedIds = ref(Array.isArray(stored.providers) ? stored.providers : [])
 
@@ -217,8 +205,8 @@ export function useStreamingFilter() {
     if (on && providers.value.length === 0) refreshProviders()
   })
 
-  // Re-fetch on a region change while the filter is on; otherwise just drop
-  // the now-stale list so it's re-fetched next time the box is ticked.
+  // Re-fetch on a region change if the filter is on; otherwise drop the stale
+  // list so it's re-fetched on the next tick.
   watch(region, () => {
     if (enabled.value) refreshProviders()
     else providers.value = []
@@ -264,9 +252,8 @@ export function useStreamingFilter() {
 }
 
 /**
- * Given a picked film's `providers` and the filter state, the line to show
- * under the pick: the services it's on, or a heads-up when the filter was on
- * and it's on none of the chosen ones.
+ * The line under the pick: the services the film is on, or a heads-up when
+ * the filter was on and it's on none of the chosen ones.
  */
 export function streamingNote(film, filter) {
   const on = film?.providers ?? []

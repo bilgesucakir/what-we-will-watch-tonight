@@ -43,25 +43,22 @@ public class TmdbPosterService {
     }
 
     /**
-     * The outcome of a title search: a best-guess poster {@code url} (may be
-     * {@code null}) and whether that guess is trustworthy. It's {@code confident}
-     * only when exactly one result matches the title exactly (English or
-     * original-language) <em>and</em> the release year; otherwise the caller
-     * should confirm with {@link #findPosterUrlByTmdbId} using the exact id.
+     * A title search's outcome: a best-guess poster {@code url} (may be
+     * {@code null}), and {@code confident} only when exactly one result matches
+     * the title (English or original) <em>and</em> the year. When not confident,
+     * confirm with {@link #findPosterUrlByTmdbId} using the exact id.
      */
     public record PosterMatch(String url, boolean confident) {
         static final PosterMatch NONE = new PosterMatch(null, false);
     }
 
     /**
-     * Looks up a poster by title via TMDB's multi search (movies <em>and</em> TV,
-     * since Letterboxd lists some limited series). Results are scored -- exact
-     * title beats fuzzy, matching year beats wrong, popularity breaks ties -- and
-     * the pick is flagged {@code confident} only when the title+year combination
-     * is unambiguous in the results.
+     * Looks up a poster by title via TMDB multi search (movies <em>and</em> TV,
+     * since Letterboxd lists some limited series), scored: exact title beats
+     * fuzzy, matching year beats wrong, popularity breaks ties.
      *
      * @param title the film's title; a trailing "(YYYY)" is stripped before searching
-     * @param year  the film's release year; used to disambiguate, may be {@code null}
+     * @param year  the film's release year, for disambiguation; may be {@code null}
      */
     public PosterMatch findPoster(String title, Integer year) {
         if (apiKey.isBlank()) {

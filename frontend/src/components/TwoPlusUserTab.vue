@@ -17,8 +17,8 @@ const count = ref(MIN_PEOPLE)
 const activeIndexes = computed(() => Array.from({ length: count.value }, (_, i) => i))
 const activeNames = computed(() => activeIndexes.value.map((i) => names[i].trim()))
 
-// True when field `index` repeats a username already entered in an earlier
-// active field (case-insensitive).
+// True when field `index` repeats an earlier active field's username
+// (case-insensitive).
 function isRepeat(index) {
   const name = names[index].trim().toLowerCase()
   return (
@@ -33,8 +33,7 @@ const checks = names.map((_, index) => useUsernameCheck(toRef(names, index), () 
 // Avatar URLs for the active people, in order, for the sofa banner.
 const seatedAvatars = computed(() => activeIndexes.value.map((i) => checks[i].avatarUrl.value))
 
-// "Pick something streamable" -- region + services + on/off, remembered
-// in localStorage. Only affects the random pick.
+// "Pick something streamable" state, remembered in localStorage. Random pick only.
 const streaming = useStreamingFilter()
 
 const loading = ref(false)
@@ -44,12 +43,10 @@ const surprisePick = ref(null)
 const pendingAction = ref(null)
 const lastSearchWasRandom = ref(false)
 const pickStreamingNote = ref(null)
-// Set when "return all films" cleared an active streaming filter, so the list
-// view can say so.
+// Set when "return all films" cleared an active streaming filter.
 const clearedFilterForList = ref(false)
 
-// The usernames the current `matches` came from, captured at search time so the
-// CSV filename stays right even if the inputs are edited afterwards.
+// Usernames the current `matches` came from, captured so the CSV name stays right.
 const searchedNames = ref([])
 
 const hasEmptyField = computed(() => activeNames.value.some((name) => name === ''))
@@ -98,8 +95,7 @@ async function search(random) {
   if (hasEmptyField.value || hasDuplicates.value) return
 
   // The full list is never streaming-filtered -- asking for it switches the
-  // filter off and drops the selection so there's no lingering "is this
-  // filtered?" ambiguity.
+  // filter off and drops the selection.
   if (!random && streaming.enabled.value) {
     streaming.enabled.value = false
     streaming.clear()
@@ -340,10 +336,7 @@ h1 {
   padding-right: 2.75rem;
 }
 
-/*
- * The remove button sits inside the input on the right, split off by a thin
- * divider rather than carrying its own button chrome.
- */
+/* Sits inside the input on the right, split off by a thin divider. */
 .remove-person {
   position: absolute;
   top: 1px;
