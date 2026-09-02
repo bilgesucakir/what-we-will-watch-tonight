@@ -23,13 +23,9 @@ async function checkUsername(username) {
   }
 }
 
-// Debounced existence/avatar check for a username ref, shared by every tab
-// that has a username input. Guards against stale responses landing after
-// the field has changed again while the check was in flight.
-//
-// `isEnabled` is an optional predicate (read reactively); when it returns
-// false the check is skipped and the refs reset to null -- used to avoid
-// re-checking a username that's already been entered in another field.
+// Debounced existence/avatar check for a username ref, shared across tabs.
+// Ignores stale responses. `isEnabled` (optional, reactive) skips the check
+// when false -- e.g. a username already entered in another field.
 export function useUsernameCheck(usernameRef, isEnabled = () => true) {
   const exists = ref(null)
   const watchlistPublic = ref(null)
