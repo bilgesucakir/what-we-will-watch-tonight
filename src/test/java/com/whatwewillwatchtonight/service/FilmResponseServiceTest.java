@@ -9,6 +9,7 @@ import com.whatwewillwatchtonight.service.TmdbPosterService.PosterMatch;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executors;
@@ -201,6 +202,47 @@ class FilmResponseServiceTest {
 
         assertThat(dtos).hasSize(1);
         assertThat(dtos.get(0).providers()).isEmpty();
+    }
+
+    @Test
+    void randomModeWithAStreamingFilterScansTheWholeIntersectionNotJustASample() {
+        // 40 films, exactly one on Netflix. The old code only looked at a
+        // 12-film shuffled sample, so it missed this ~40% of the time.
+        List<Film> films = new ArrayList<>();
+        for (int i = 0; i < 40; i++) {
+            String slug = "film-" + i;
+            films.add(new Film(slug, "Film " + i + " (2024)", 2024));
+            when(scraperService.fetchFilmDetails(slug)).thenReturn(new FilmDetails(3.0, 90, new TmdbRef(i + 100, "movie")));
+            when(streamingService.streamingOptions(eq(i + 100), anyString(), eq("US")))
+                    .thenReturn(i == 17 ? List.of(new StreamingProvider(8, "Netflix", null)) : List.of());
+        }
+        when(posterService.findPosterUrlByTmdbId(anyInt(), anyString())).thenReturn("poster.jpg");
+        StreamingFilter filter = new StreamingFilter("US", Set.of(8));
+
+        for (int run = 0; run < 20; run++) {
+            assertThat(service.toDtos(films, true, filter)).singleElement().satisfies(dto -> {
+                assertThat(dto.title()).isEqualTo("Film 17 (2024)");
+                assertThat(dto.providers()).extracting(StreamingProvider::name).containsExactly("Netflix");
+            });
+        }
+    }
+
+    @Test
+    void randomModeWithAStreamingFilterChecksEveryFilmBeforeConcludingNoneStream() {
+        List<Film> films = new ArrayList<>();
+        for (int i = 0; i < 20; i++) {
+            String slug = "film-" + i;
+            films.add(new Film(slug, "Film " + i + " (2024)", 2024));
+            when(scraperService.fetchFilmDetails(slug)).thenReturn(new FilmDetails(3.0, 90, new TmdbRef(i + 100, "movie")));
+        }
+        when(streamingService.streamingOptions(anyInt(), anyString(), anyString())).thenReturn(List.of());
+        when(posterService.findPosterUrlByTmdbId(anyInt(), anyString())).thenReturn("poster.jpg");
+
+        List<FilmMatchDto> dtos = service.toDtos(films, true, new StreamingFilter("US", Set.of(8)));
+
+        assertThat(dtos).singleElement().satisfies(dto -> assertThat(dto.providers()).isEmpty());
+        verify(scraperService, times(20)).fetchFilmDetails(anyString());
+        verify(streamingService, times(20)).streamingOptions(anyInt(), anyString(), anyString());
     }
 
     @Test
