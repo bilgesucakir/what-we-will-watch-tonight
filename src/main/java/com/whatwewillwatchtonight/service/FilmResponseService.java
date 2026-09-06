@@ -14,23 +14,24 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
 /**
  * Builds the API response for a list of films. The full list just gets a poster
- * per film; a single random pick also gets its Letterboxd rating, runtime and
- * -- when a {@link StreamingFilter} is in play -- its streaming options, and is
- * re-rolled until it lands on one of the group's services.
+ * per film; a single random pick also gets its Letterboxd rating and runtime,
+ * and -- when a {@link StreamingFilter} is in play -- is drawn from the films
+ * on the group's services.
  */
 @Service
 public class FilmResponseService {
 
     private static final String FILM_URL_TEMPLATE = "https://letterboxd.com/film/%s/";
 
-    // Film pages a filtered pick will look at before giving up and handing back
-    // one of the group's films anyway.
-    private static final int MAX_STREAMING_TRIES = 12;
+    // How many film pages a filtered pick probes in parallel at a time while
+    // scanning the intersection for a streamable film.
+    private static final int STREAMING_BATCH = 16;
 
     private final TmdbPosterService posterService;
     private final TmdbStreamingService streamingService;
@@ -77,10 +78,12 @@ public class FilmResponseService {
     }
 
     /**
-     * Picks one film. Without a filter that's a single draw; with one, it walks
-     * a shuffled list, checking each film's streaming options, and stops at the
-     * first that's on the group's services -- or, if none are, hands back the
-     * last film it looked at.
+     * Picks one film. Without a filter that's a single draw. With one, it
+     * scans the <em>whole</em> shuffled intersection -- in bounded-parallel
+     * batches -- and returns the first film on one of the group's services,
+     * falling back to the last film checked when truly none are streamable.
+     * Scanning every film, not a fixed-size sample, is what makes a "nothing
+     * is streamable" answer trustworthy.
      */
     private Optional<FilmMatchDto> pickRandom(List<Film> films, StreamingFilter filter) {
         if (films.isEmpty()) {
@@ -90,25 +93,46 @@ public class FilmResponseService {
         List<Film> shuffled = new ArrayList<>(films);
         Collections.shuffle(shuffled);
 
-        int tries = filter == null ? 1 : Math.min(shuffled.size(), MAX_STREAMING_TRIES);
-        FilmMatchDto lastTried = null;
-
-        for (int i = 0; i < tries; i++) {
-            Film film = shuffled.get(i);
-            FilmDetails details = scraperService.fetchFilmDetails(film.slug());
-            TmdbRef ref = details.tmdbRef();
-            List<StreamingProvider> providers = (filter != null && ref != null)
-                    ? streamingService.streamingOptions(ref.id(), ref.type(), filter.region())
-                    : List.of();
-
-            FilmMatchDto dto = enrichedDto(film, details, providers);
-
-            if (filter == null || providers.stream().anyMatch(p -> filter.providerIds().contains(p.id()))) {
-                return Optional.of(dto);
-            }
-            lastTried = dto;
+        if (filter == null) {
+            Film film = shuffled.get(0);
+            return Optional.of(enrichedDto(film, scraperService.fetchFilmDetails(film.slug()), List.of()));
         }
-        return Optional.ofNullable(lastTried);
+
+        Candidate fallback = null;
+        for (int start = 0; start < shuffled.size(); start += STREAMING_BATCH) {
+            List<Film> batch = shuffled.subList(start, Math.min(start + STREAMING_BATCH, shuffled.size()));
+            List<Candidate> candidates = batch.stream()
+                    .map(film -> CompletableFuture.supplyAsync(() -> probe(film, filter), ioExecutor))
+                    .toList()
+                    .stream()
+                    .map(CompletableFuture::join)
+                    .toList();
+
+            for (Candidate c : candidates) {
+                if (c.streamableOn(filter.providerIds())) {
+                    return Optional.of(enrichedDto(c.film(), c.details(), c.providers()));
+                }
+                fallback = c;
+            }
+        }
+        return Optional.ofNullable(fallback)
+                .map(c -> enrichedDto(c.film(), c.details(), c.providers()));
+    }
+
+    /** Fetches a film's details and, if it has a TMDB ref, its streaming options. */
+    private Candidate probe(Film film, StreamingFilter filter) {
+        FilmDetails details = scraperService.fetchFilmDetails(film.slug());
+        TmdbRef ref = details.tmdbRef();
+        List<StreamingProvider> providers = ref != null
+                ? streamingService.streamingOptions(ref.id(), ref.type(), filter.region())
+                : List.of();
+        return new Candidate(film, details, providers);
+    }
+
+    private record Candidate(Film film, FilmDetails details, List<StreamingProvider> providers) {
+        boolean streamableOn(Set<Integer> providerIds) {
+            return providers.stream().anyMatch(p -> providerIds.contains(p.id()));
+        }
     }
 
     private FilmMatchDto plainDto(Film film) {
