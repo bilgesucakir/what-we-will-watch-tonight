@@ -389,7 +389,6 @@ describe('TwoPlusUserTab', () => {
     expect(global.fetch).toHaveBeenCalledWith('/api/intersect?user=alice&user=bob')
     expect(wrapper.find('.results a').attributes('href')).toBe('https://letterboxd.com/film/anora/')
     expect(wrapper.find('.picked-film').exists()).toBe(false)
-    expect(wrapper.find('.results-note').exists()).toBe(false)
   })
 
   it('turns the streaming filter off and clears it when the full list is requested', async () => {
@@ -406,7 +405,6 @@ describe('TwoPlusUserTab', () => {
     await wrapper.find('.all-matches-button').trigger('click')
     await flushPromises()
 
-    expect(wrapper.find('.results-note').text()).toMatch(/streaming filter turned off/i)
     expect(wrapper.find('.streaming-toggle input').element.checked).toBe(false)
     expect(wrapper.find('.streaming-body').exists()).toBe(false)
   })

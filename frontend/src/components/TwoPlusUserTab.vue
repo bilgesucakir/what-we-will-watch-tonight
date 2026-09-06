@@ -281,9 +281,6 @@ function downloadCsv() {
     </template>
 
     <template v-else>
-      <p v-if="clearedFilterForList" class="results-note">
-        Streaming filter turned off — this is everything everyone's watchlists share.
-      </p>
       <ul class="results">
         <li v-for="film in matches" :key="film.url">
           <a :href="film.url" target="_blank" rel="noopener noreferrer">
@@ -444,13 +441,6 @@ button:disabled {
   margin-top: 1.5rem;
   margin-bottom: 0;
   color: #e0e0e0;
-}
-
-.results-note {
-  margin-top: 1.5rem;
-  margin-bottom: -0.5rem;
-  font-size: 0.8rem;
-  color: #999;
 }
 
 .picked-film {
