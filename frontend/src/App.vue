@@ -3,7 +3,22 @@ import { ref } from 'vue'
 import SingleUserTab from './components/SingleUserTab.vue'
 import TwoPlusUserTab from './components/TwoPlusUserTab.vue'
 
+const TABS = [
+  { id: 'two', label: 'Us' },
+  { id: 'single', label: 'Just Me' }
+]
 const activeTab = ref('two')
+const tabButtons = ref([])
+
+// WAI-ARIA tabs pattern: arrow keys move between tabs (and activate them).
+function onTabKeydown(event, index) {
+  const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key]
+  if (!step) return
+  event.preventDefault()
+  const next = (index + step + TABS.length) % TABS.length
+  activeTab.value = TABS[next].id
+  tabButtons.value[next]?.focus()
+}
 </script>
 
 <template>
@@ -12,6 +27,7 @@ const activeTab = ref('two')
     href="https://github.com/bilgesucakir/what-we-will-watch-tonight"
     target="_blank"
     rel="noopener noreferrer"
+    aria-label="View the source on GitHub"
   >
     <svg viewBox="0 0 16 16" width="20" height="20" fill="currentColor" aria-hidden="true">
       <path
@@ -25,29 +41,32 @@ const activeTab = ref('two')
         1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"
       />
     </svg>
-    <span>GitHub</span>
   </a>
 
   <main class="page">
-    <nav class="tabs">
+    <div class="tabs" role="tablist" aria-label="Who's watching">
       <button
+        v-for="(tab, index) in TABS"
+        :id="`tab-${tab.id}`"
+        :key="tab.id"
+        ref="tabButtons"
         type="button"
-        :class="['tab', { active: activeTab === 'two' }]"
-        @click="activeTab = 'two'"
+        role="tab"
+        :aria-selected="activeTab === tab.id"
+        :aria-controls="`panel-${tab.id}`"
+        :tabindex="activeTab === tab.id ? 0 : -1"
+        :class="['tab', { active: activeTab === tab.id }]"
+        @click="activeTab = tab.id"
+        @keydown="onTabKeydown($event, index)"
       >
-        Us
+        {{ tab.label }}
       </button>
-      <button
-        type="button"
-        :class="['tab', { active: activeTab === 'single' }]"
-        @click="activeTab = 'single'"
-      >
-        Just Me
-      </button>
-    </nav>
+    </div>
 
-    <TwoPlusUserTab v-if="activeTab === 'two'" />
-    <SingleUserTab v-else />
+    <div :id="`panel-${activeTab}`" role="tabpanel" :aria-labelledby="`tab-${activeTab}`">
+      <TwoPlusUserTab v-if="activeTab === 'two'" />
+      <SingleUserTab v-else />
+    </div>
   </main>
 </template>
 
@@ -58,14 +77,14 @@ const activeTab = ref('two')
  * `flow-root` stops `.page`'s top margin collapsing out and showing a strip.
  */
 :global(html) {
-  background: #0b0f1c;
+  background: var(--bg);
 }
 
 :global(body) {
   margin: 0;
   min-height: 100vh;
   display: flow-root;
-  background: linear-gradient(to bottom, #0b0f1c 0%, #0b0f1c 40%, #08090f 72%, #05070d 100%);
+  background: linear-gradient(to bottom, var(--bg) 0%, var(--bg) 40%, #08090f 72%, #05070d 100%);
 }
 
 .github-link {
@@ -73,30 +92,26 @@ const activeTab = ref('two')
   top: 1rem;
   right: 1rem;
   display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  color: #e0e0e0;
-  font-size: 0.9rem;
-  text-decoration: none;
+  color: var(--text);
   z-index: 1;
 }
 
 .github-link:hover {
-  color: #4a8f63;
+  color: var(--accent-text);
 }
 
 .page {
   max-width: 34rem;
   margin: 3rem auto;
   padding: 0 1.5rem;
-  font-family: system-ui, sans-serif;
-  color: #f0f0f0;
+  font-family: 'Outfit', system-ui, sans-serif;
+  color: var(--text);
 }
 
 .tabs {
   display: flex;
   margin-bottom: 1.5rem;
-  border-bottom: 1px solid #2e2e2e;
+  border-bottom: 1px solid var(--line-soft);
 }
 
 .tab {
@@ -105,7 +120,7 @@ const activeTab = ref('two')
   border: none;
   border-bottom: 2px solid transparent;
   border-radius: 0;
-  color: #999;
+  color: var(--text-muted);
   font-size: 0.95rem;
   font-weight: 600;
   text-align: center;
@@ -115,12 +130,12 @@ const activeTab = ref('two')
 }
 
 .tab:hover {
-  color: #e0e0e0;
+  color: var(--text);
 }
 
 .tab.active {
-  color: #4a8f63;
-  border-bottom-color: #4a8f63;
+  color: var(--accent-text);
+  border-bottom-color: var(--accent-text);
 }
 
 /* --- Mobile (keep the 640px breakpoint in sync with the tab components) --- */
@@ -128,10 +143,6 @@ const activeTab = ref('two')
   .page {
     margin: 1.5rem auto 4rem;
     padding: 0 1rem;
-  }
-
-  .github-link span {
-    display: none;
   }
 
   .github-link {

@@ -10,6 +10,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@phosphor-icons/vue": "^2.2.1",
     "vue": "^3.4.38"
   },
   "devDependencies": {

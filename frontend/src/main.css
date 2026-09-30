@@ -3,3 +3,83 @@
 *::after {
   box-sizing: border-box;
 }
+
+/*
+ * Design tokens. Neutrals are tinted toward the page navy so surfaces, lines
+ * and text read as one palette. One accent (green), used everywhere.
+ *
+ * Radius rule: controls and posters 8px, cards 14px, chips/pills fully round,
+ * tiny provider logos 4px.
+ */
+:root {
+  color-scheme: dark;
+
+  --bg: #0b0f1c;
+  --surface: #161b2b; /* inputs, chips, poster placeholders */
+  --surface-2: #1b2133; /* input prefix, skeleton base */
+  --surface-3: #262e45; /* skeleton shimmer highlight */
+  --line: #3a4258; /* control borders, dividers inside controls */
+  --line-soft: #232a3d; /* page-level dividers, skeleton card */
+
+  --text: #e6e8ee;
+  --text-soft: #c6ccda; /* secondary text over the poster glow */
+  --text-muted: #8b93a7;
+  --text-faint: #7a8398; /* attribution; still 5:1 on --bg */
+
+  --accent: #3a7a52; /* fills: buttons, selected chips */
+  --accent-hover: #326a47;
+  --accent-text: #5fb07d; /* accent as text, links, focus ring */
+  --accent-soft: #15211b; /* tinted backgrounds */
+  --accent-line: #2f5a40; /* tinted borders */
+  --on-accent: #fff;
+
+  --danger: #ff6b5e;
+  --warning: #d98c4a;
+
+  --radius-logo: 4px;
+  --radius-control: 8px;
+  --radius-card: 14px;
+  --radius-pill: 999px;
+}
+
+/* Form controls don't inherit the page font by default. */
+button,
+input,
+select {
+  font-family: inherit;
+}
+
+/* One visible focus ring for everything keyboard-reachable. */
+:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+}
+
+/* Pressed feel on every button; disabled buttons fade instead of changing color. */
+button {
+  transition:
+    transform 0.12s ease,
+    background-color 0.12s ease,
+    opacity 0.12s ease;
+}
+
+button:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}

@@ -258,7 +258,7 @@ export function useStreamingFilter() {
 export function streamingNote(film, filter) {
   const on = film?.providers ?? []
   if (filter.active.value && !on.some((p) => filter.selectedIds.value.includes(p.id))) {
-    return { warning: true, text: "Not on your streaming services — but it's the best we found." }
+    return { warning: true, text: "Not on your streaming services, but it's the best we found." }
   }
   if (on.length === 0) return null
   return { warning: false, providers: on }

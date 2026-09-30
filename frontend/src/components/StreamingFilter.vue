@@ -60,7 +60,7 @@ const hiddenCount = computed(() => ordered.value.list.length - visibleProviders.
       </label>
 
       <p v-if="filter.needsRegion.value" class="streaming-hint">
-        We couldn't tell where you are from your browser — pick a country to see its services.
+        We couldn't tell where you are from your browser. Pick a country to see its services.
       </p>
       <p v-else-if="filter.loading.value" class="streaming-hint">Loading services…</p>
       <p v-else-if="filter.providers.value.length === 0" class="streaming-hint">
@@ -119,7 +119,7 @@ const hiddenCount = computed(() => ordered.value.list.length - visibleProviders.
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #cfe3d6;
+  color: var(--text-muted);
   font-weight: 500;
   font-size: 0.9rem;
   padding: 0.35rem 0.2rem;
@@ -129,6 +129,7 @@ const hiddenCount = computed(() => ordered.value.list.length - visibleProviders.
 .streaming-toggle input {
   width: auto;
   padding: 0;
+  accent-color: var(--accent);
   cursor: pointer;
 }
 
@@ -137,9 +138,9 @@ const hiddenCount = computed(() => ordered.value.list.length - visibleProviders.
   flex-direction: column;
   gap: 0.6rem;
   padding: 0.8rem;
-  border: 1px solid #4a8f63;
-  border-radius: 0.5rem;
-  background: #17211c;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-control);
+  background: var(--accent-soft);
 }
 
 .streaming-region {
@@ -147,23 +148,23 @@ const hiddenCount = computed(() => ordered.value.list.length - visibleProviders.
   align-items: center;
   gap: 0.5rem;
   font-size: 0.85rem;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .streaming-region select {
   flex: 1;
   font-size: 0.85rem;
   padding: 0.35rem 0.5rem;
-  border-radius: 0.4rem;
-  background: #242424;
-  color: #e0e0e0;
-  border: 1px solid #4a4a4a;
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
 }
 
 .streaming-hint {
   margin: 0;
   font-size: 0.8rem;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .streaming-chips {
@@ -176,25 +177,25 @@ const hiddenCount = computed(() => ordered.value.list.length - visibleProviders.
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  background: #242424;
-  color: #cfcfcf;
-  border: 1px solid #4a4a4a;
-  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
   font-size: 0.8rem;
   font-weight: 400;
   padding: 0.3rem 0.7rem;
 }
 
 .chip--on {
-  background: #4a8f63;
-  color: #fff;
-  border-color: #4a8f63;
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
 }
 
 .chip-logo {
   width: 1rem;
   height: 1rem;
-  border-radius: 0.2rem;
+  border-radius: var(--radius-logo);
   object-fit: cover;
 }
 
@@ -202,7 +203,7 @@ const hiddenCount = computed(() => ordered.value.list.length - visibleProviders.
 .streaming-clear {
   align-self: flex-start;
   background: transparent;
-  color: #4a8f63;
+  color: var(--accent-text);
   border: none;
   font-size: 0.8rem;
   font-weight: 400;
@@ -210,7 +211,7 @@ const hiddenCount = computed(() => ordered.value.list.length - visibleProviders.
 }
 
 .streaming-more {
-  color: #999;
+  color: var(--text-muted);
   margin-top: -0.2rem;
 }
 

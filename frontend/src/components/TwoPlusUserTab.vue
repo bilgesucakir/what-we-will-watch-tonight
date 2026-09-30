@@ -3,9 +3,12 @@ import { reactive, ref, computed, toRef } from 'vue'
 import { useUsernameCheck, usernameFieldError } from '../composables/useUsernameCheck'
 import { useStreamingFilter, streamingNote } from '../composables/useStreamingFilter'
 import { downloadFilmsAsCsv } from '../utils/csv'
-import { pickMeta } from '../utils/format'
+import { PhPopcorn } from '@phosphor-icons/vue'
 import StreamingFilter from './StreamingFilter.vue'
 import SofaStage from './SofaStage.vue'
+import PickCard from './PickCard.vue'
+import ResultSkeleton from './ResultSkeleton.vue'
+import UsernameInput from './UsernameInput.vue'
 
 const MIN_PEOPLE = 2
 const MAX_PEOPLE = 4
@@ -152,6 +155,19 @@ function findTonightsPick() {
   return search(true)
 }
 
+// Short summary for screen readers, read from one always-present live region
+// (announcing the whole poster grid would be far too much).
+const announcement = computed(() => {
+  if (loading.value) return 'Scraping the watchlists…'
+  if (error.value) return error.value
+  if (matches.value === null) return ''
+  if (matches.value.length === 0) {
+    return surprisePick.value ? `Nothing in common. An underwatched pick: ${surprisePick.value.title}` : 'No films in common.'
+  }
+  if (lastSearchWasRandom.value) return `Tonight's pick: ${matches.value[0].title}`
+  return `${matches.value.length} films`
+})
+
 function downloadCsv() {
   downloadFilmsAsCsv(matches.value, `${searchedNames.value.join('_')}_watchlist_intersection.csv`)
 }
@@ -167,14 +183,11 @@ function downloadCsv() {
 
   <form class="form" @submit.prevent="findTonightsPick">
     <div v-for="index in count" :key="index - 1" class="field">
-      <div class="field-input">
-        <input
-          v-model="names[index - 1]"
-          type="text"
-          placeholder="username"
-          :disabled="loading"
-          autocomplete="off"
-        />
+      <UsernameInput
+        v-model="names[index - 1]"
+        :label="`Person ${index} Letterboxd username`"
+        :disabled="loading"
+      >
         <button
           v-if="index > MIN_PEOPLE"
           type="button"
@@ -184,7 +197,7 @@ function downloadCsv() {
         >
           &times;
         </button>
-      </div>
+      </UsernameInput>
       <p v-if="fieldError(index - 1)" class="field-error">{{ fieldError(index - 1) }}</p>
     </div>
 
@@ -194,45 +207,29 @@ function downloadCsv() {
 
     <StreamingFilter :filter="streaming" />
 
-    <button type="submit" :disabled="!canSubmit">
-      {{ pendingAction === 'tonight' ? 'Searching…' : '🎲 Pick Something to Watch' }}
+    <button type="submit" class="pick-button" :disabled="!canSubmit">
+      <template v-if="pendingAction === 'tonight'">Searching…</template>
+      <template v-else><PhPopcorn :size="20" weight="duotone" aria-hidden="true" />Pick Something to Watch</template>
     </button>
     <button type="button" class="all-matches-button" :disabled="!canSubmit" @click="findAllMatches">
       {{ pendingAction === 'all' ? 'Searching…' : 'Return all films everyone has in common' }}
     </button>
   </form>
 
-  <p v-if="loading" class="status loading">
-    <span class="spinner" aria-hidden="true"></span>
+  <p class="visually-hidden" aria-live="polite">{{ announcement }}</p>
+
+  <ResultSkeleton v-if="loading" :kind="pendingAction === 'all' ? 'grid' : 'pick'">
     Scraping the watchlists, this can take a little while for large lists…
-  </p>
+  </ResultSkeleton>
 
   <p v-if="error" class="status error">{{ error }}</p>
 
   <template v-if="matches !== null && !loading">
     <template v-if="matches.length === 0 && surprisePick">
       <p class="surprise-intro">
-        Nothing in common in your watchlists — but I bet none of you have seen this:
+        Nothing in common in your watchlists, but I bet none of you have seen this:
       </p>
-      <div class="picked-film">
-        <img
-          v-if="surprisePick.posterUrl"
-          :src="surprisePick.posterUrl"
-          :alt="surprisePick.title"
-          class="picked-poster"
-        />
-        <div v-else class="picked-poster poster-placeholder" aria-hidden="true"></div>
-        <div class="picked-info">
-          <p class="picked-label">An underwatched pick</p>
-          <a
-            :href="surprisePick.url"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="picked-title"
-          >{{ surprisePick.title }}</a>
-          <p v-if="pickMeta(surprisePick)" class="picked-meta">{{ pickMeta(surprisePick) }}</p>
-        </div>
-      </div>
+      <PickCard :film="surprisePick" label="An underwatched pick" />
       <p class="tmdb-attribution">
         From
         <a href="https://letterboxd.com/official/list/top-100-underseen-films/" target="_blank" rel="noopener noreferrer">Letterboxd's Top 100 Underseen Films</a>.
@@ -243,36 +240,18 @@ function downloadCsv() {
     <p v-else-if="matches.length === 0" class="status">No films in common.</p>
 
     <template v-else-if="lastSearchWasRandom">
-      <div class="picked-film">
-        <img
-          v-if="matches[0].posterUrl"
-          :src="matches[0].posterUrl"
-          :alt="matches[0].title"
-          class="picked-poster"
-        />
-        <div v-else class="picked-poster poster-placeholder" aria-hidden="true"></div>
-        <div class="picked-info">
-          <p class="picked-label">Tonight's pick</p>
-          <a
-            :href="matches[0].url"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="picked-title"
-          >{{ matches[0].title }}</a>
-          <p v-if="pickMeta(matches[0])" class="picked-meta">{{ pickMeta(matches[0]) }}</p>
-
-          <p v-if="pickStreamingNote?.warning" class="picked-streaming picked-streaming--warning">
-            {{ pickStreamingNote.text }}
-          </p>
-          <div v-else-if="pickStreamingNote?.providers?.length" class="picked-streaming">
-            <span class="picked-streaming-label">Streaming on</span>
-            <span v-for="p in pickStreamingNote.providers" :key="p.id" class="picked-provider">
-              <img v-if="p.logoUrl" :src="p.logoUrl" alt="" class="picked-provider-logo" />
-              {{ p.name }}
-            </span>
-          </div>
+      <PickCard :film="matches[0]" label="Tonight's pick">
+        <p v-if="pickStreamingNote?.warning" class="picked-streaming picked-streaming--warning">
+          {{ pickStreamingNote.text }}
+        </p>
+        <div v-else-if="pickStreamingNote?.providers?.length" class="picked-streaming">
+          <span class="picked-streaming-label">Streaming on</span>
+          <span v-for="p in pickStreamingNote.providers" :key="p.id" class="picked-provider">
+            <img v-if="p.logoUrl" :src="p.logoUrl" alt="" class="picked-provider-logo" />
+            {{ p.name }}
+          </span>
         </div>
-      </div>
+      </PickCard>
       <p class="tmdb-attribution">
         Streaming data
         <a href="https://www.justwatch.com/" target="_blank" rel="noopener noreferrer">powered by JustWatch</a>
@@ -284,7 +263,15 @@ function downloadCsv() {
       <ul class="results">
         <li v-for="film in matches" :key="film.url">
           <a :href="film.url" target="_blank" rel="noopener noreferrer">
-            <img v-if="film.posterUrl" :src="film.posterUrl" :alt="film.title" class="poster" />
+            <img
+              v-if="film.posterUrl"
+              :src="film.posterUrl"
+              :alt="film.title"
+              class="poster"
+              width="342"
+              height="513"
+              loading="lazy"
+            />
             <div v-else class="poster poster-placeholder" aria-hidden="true"></div>
             <span class="poster-title">{{ film.title }}</span>
           </a>
@@ -302,7 +289,7 @@ h1 {
 }
 
 .subtitle {
-  color: #999;
+  color: var(--text-muted);
   margin-top: 0;
   margin-bottom: 2rem;
 }
@@ -319,96 +306,79 @@ h1 {
   gap: 0.35rem;
 }
 
-.field-input {
-  position: relative;
-  display: flex;
-}
-
-.field-input input {
-  width: 100%;
-}
-
-/* Make room for the inline remove button only on rows that have one. */
-.field-input:has(.remove-person) input {
-  padding-right: 2.75rem;
-}
-
-/* Sits inside the input on the right, split off by a thin divider. */
+/* Sits inside the username box on the right, split off by a thin divider. */
 .remove-person {
-  position: absolute;
-  top: 1px;
-  right: 1px;
-  bottom: 1px;
   width: 2.5rem;
+  flex-shrink: 0;
   padding: 0;
   font-size: 1.15rem;
   line-height: 1;
-  color: #888;
+  color: var(--text-muted);
   background: transparent;
   border: none;
-  border-left: 1px solid #4a4a4a;
+  border-left: 1px solid var(--line);
   border-radius: 0;
 }
 
 .remove-person:hover {
-  color: #e0e0e0;
+  color: var(--text);
   background: transparent;
 }
 
 .add-person {
   align-self: flex-start;
   background: transparent;
-  color: #4a8f63;
-  border: 1px dashed #3d5c48;
+  color: var(--accent-text);
+  border: 1px dashed var(--accent-line);
   font-size: 0.9rem;
   padding: 0.4rem 0.8rem;
 }
 
 .add-person:hover {
-  background: #1a2620;
+  background: var(--accent-soft);
 }
 
 .field-error {
   margin: 0;
   font-size: 0.85rem;
-  color: #c0392b;
+  color: var(--danger);
 }
 
-input,
 button {
   font-size: 1rem;
   padding: 0.6rem 0.8rem;
-  border-radius: 0.4rem;
-  border: 1px solid #ccc;
-}
-
-input {
-  background: #242424;
-  color: #e0e0e0;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--line);
 }
 
 button {
-  background: #4a8f63;
-  color: #fff;
+  background: var(--accent);
+  color: var(--on-accent);
   border: none;
   cursor: pointer;
   font-weight: 600;
 }
 
-button:disabled {
-  background: #3d5c48;
-  cursor: not-allowed;
+.pick-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+}
+
+.pick-button:not(:disabled):hover {
+  background: var(--accent-hover);
 }
 
 .download-button {
   margin-top: 0;
-  background: #4a8f63;
-  color: #e0e0e0;
-  border: 1px solid #4a8f63;
+  background: var(--accent);
+  color: var(--text);
+  border: 1px solid var(--accent);
 }
 
 .download-button:hover {
-  background: #3d7a53;
+  background: var(--accent-hover);
 }
 
 .download-button-small {
@@ -418,7 +388,7 @@ button:disabled {
 
 .all-matches-button {
   background: transparent;
-  color: #4a8f63;
+  color: var(--accent-text);
   border: none;
   font-size: 0.95rem;
   font-weight: 400;
@@ -429,8 +399,6 @@ button:disabled {
 
 .all-matches-button:disabled {
   background: transparent;
-  color: #3d5c48;
-  cursor: not-allowed;
 }
 
 .all-matches-button:hover {
@@ -440,59 +408,7 @@ button:disabled {
 .surprise-intro {
   margin-top: 1.5rem;
   margin-bottom: 0;
-  color: #e0e0e0;
-}
-
-.picked-film {
-  margin-top: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  padding: 1.5rem;
-  border: 1px solid #4a8f63;
-  border-radius: 0.75rem;
-  background: #1a2620;
-}
-
-.picked-poster {
-  width: 7rem;
-  aspect-ratio: 2 / 3;
-  border-radius: 0.5rem;
-  object-fit: cover;
-  background: #242424;
-  flex-shrink: 0;
-}
-
-.picked-info {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.4rem;
-}
-
-.picked-label {
-  margin: 0;
-  font-size: 0.75rem;
-  color: #999;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.picked-title {
-  color: #e0e0e0;
-  font-size: 1.1rem;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.picked-title:hover {
-  color: #4a8f63;
-}
-
-.picked-meta {
-  margin: 0.15rem 0 0;
-  font-size: 0.85rem;
-  color: #999;
+  color: var(--text);
 }
 
 .picked-streaming {
@@ -502,31 +418,31 @@ button:disabled {
   gap: 0.4rem;
   margin: 0.35rem 0 0;
   font-size: 0.8rem;
-  color: #cfe3d6;
+  color: var(--text);
 }
 
 .picked-streaming--warning {
-  color: #d98c4a;
+  color: var(--warning);
 }
 
 .picked-streaming-label {
-  color: #999;
+  color: var(--text-muted);
 }
 
 .picked-provider {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  background: #17211c;
-  border: 1px solid #3d5c48;
-  border-radius: 999px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius-pill);
   padding: 0.15rem 0.55rem;
 }
 
 .picked-provider-logo {
   width: 0.9rem;
   height: 0.9rem;
-  border-radius: 0.2rem;
+  border-radius: var(--radius-logo);
   object-fit: cover;
 }
 
@@ -534,30 +450,8 @@ button:disabled {
   margin-top: 1.5rem;
 }
 
-.status.loading {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.spinner {
-  width: 1rem;
-  height: 1rem;
-  flex-shrink: 0;
-  border: 2px solid #2e3f34;
-  border-top-color: #4a8f63;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .status.error {
-  color: #c0392b;
+  color: var(--danger);
 }
 
 .results {
@@ -579,40 +473,41 @@ button:disabled {
 
 .poster {
   width: 100%;
+  height: auto;
   aspect-ratio: 2 / 3;
-  border-radius: 0.4rem;
+  border-radius: var(--radius-control);
   object-fit: cover;
-  background: #242424;
+  background: var(--surface);
 }
 
 .poster-placeholder {
-  border: 1px solid #333;
+  border: 1px solid var(--line);
 }
 
 .poster-title {
   font-size: 0.8rem;
-  color: #e0e0e0;
+  color: var(--text);
   text-align: center;
   line-height: 1.3;
 }
 
 .results a:hover .poster-title {
-  color: #4a8f63;
+  color: var(--accent-text);
 }
 
 .tmdb-attribution {
   margin-top: 1.5rem;
   font-size: 0.75rem;
-  color: #777;
+  color: var(--text-faint);
   text-align: center;
 }
 
 .tmdb-attribution a {
-  color: #777;
+  color: var(--text-faint);
 }
 
 .tmdb-attribution a:hover {
-  color: #4a8f63;
+  color: var(--accent-text);
 }
 
 /* --- Mobile (keep the 640px breakpoint in sync with App.vue) --- */
@@ -627,28 +522,6 @@ button:disabled {
 
   .results {
     grid-template-columns: repeat(2, 1fr);
-  }
-
-  /* Keep the poster and its details side by side -- just tighter and smaller. */
-  .picked-film {
-    gap: 0.9rem;
-    padding: 1rem;
-  }
-
-  .picked-poster {
-    width: 5rem;
-  }
-
-  .picked-label {
-    font-size: 0.7rem;
-  }
-
-  .picked-title {
-    font-size: 1rem;
-  }
-
-  .picked-meta {
-    font-size: 0.8rem;
   }
 }
 </style>

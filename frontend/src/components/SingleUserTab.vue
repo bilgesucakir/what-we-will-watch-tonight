@@ -3,9 +3,12 @@ import { ref, computed } from 'vue'
 import { useUsernameCheck, usernameFieldError } from '../composables/useUsernameCheck'
 import { useStreamingFilter, streamingNote } from '../composables/useStreamingFilter'
 import { downloadFilmsAsCsv } from '../utils/csv'
-import { pickMeta } from '../utils/format'
+import { PhPopcorn } from '@phosphor-icons/vue'
 import StreamingFilter from './StreamingFilter.vue'
 import SofaStage from './SofaStage.vue'
+import PickCard from './PickCard.vue'
+import ResultSkeleton from './ResultSkeleton.vue'
+import UsernameInput from './UsernameInput.vue'
 
 const username = ref('')
 const loading = ref(false)
@@ -86,6 +89,17 @@ function findTonightsPick() {
   return search(true)
 }
 
+// Short summary for screen readers, read from one always-present live region
+// (announcing the whole poster grid would be far too much).
+const announcement = computed(() => {
+  if (loading.value) return 'Scraping the watchlist…'
+  if (error.value) return error.value
+  if (matches.value === null) return ''
+  if (matches.value.length === 0) return 'No films in this watchlist.'
+  if (lastSearchWasRandom.value) return `Tonight's pick: ${matches.value[0].title}`
+  return `${matches.value.length} films`
+})
+
 function downloadCsv() {
   downloadFilmsAsCsv(matches.value, `${searchedUsername.value}_watchlist.csv`)
 }
@@ -99,65 +113,43 @@ function downloadCsv() {
 
   <form class="form" @submit.prevent="findTonightsPick">
     <div class="field">
-      <input
-        v-model="username"
-        type="text"
-        placeholder="username"
-        :disabled="loading"
-        autocomplete="off"
-      />
+      <UsernameInput v-model="username" label="Letterboxd username" :disabled="loading" />
       <p v-if="fieldError" class="field-error">{{ fieldError }}</p>
     </div>
     <StreamingFilter :filter="streaming" />
 
-    <button type="submit" :disabled="!canSubmit">
-      {{ pendingAction === 'tonight' ? 'Searching…' : "🎲 Pick Something to Watch" }}
+    <button type="submit" class="pick-button" :disabled="!canSubmit">
+      <template v-if="pendingAction === 'tonight'">Searching…</template>
+      <template v-else><PhPopcorn :size="20" weight="duotone" aria-hidden="true" />Pick Something to Watch</template>
     </button>
     <button type="button" class="all-matches-button" :disabled="!canSubmit" @click="findAllFilms">
       {{ pendingAction === 'all' ? 'Searching…' : 'Return all films in my watchlist' }}
     </button>
   </form>
 
-  <p v-if="loading" class="status loading">
-    <span class="spinner" aria-hidden="true"></span>
+  <p class="visually-hidden" aria-live="polite">{{ announcement }}</p>
+
+  <ResultSkeleton v-if="loading" :kind="pendingAction === 'all' ? 'grid' : 'pick'">
     Scraping the watchlist, this can take a little while for large lists…
-  </p>
+  </ResultSkeleton>
   <p v-else-if="error" class="status error">{{ error }}</p>
 
   <template v-if="matches !== null && !loading">
     <p v-if="matches.length === 0" class="status">No films in this watchlist.</p>
 
     <template v-else-if="lastSearchWasRandom">
-      <div class="picked-film">
-        <img
-          v-if="matches[0].posterUrl"
-          :src="matches[0].posterUrl"
-          :alt="matches[0].title"
-          class="picked-poster"
-        />
-        <div v-else class="picked-poster poster-placeholder" aria-hidden="true"></div>
-        <div class="picked-info">
-          <p class="picked-label">Tonight's pick</p>
-          <a
-            :href="matches[0].url"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="picked-title"
-          >{{ matches[0].title }}</a>
-          <p v-if="pickMeta(matches[0])" class="picked-meta">{{ pickMeta(matches[0]) }}</p>
-
-          <p v-if="pickStreamingNote?.warning" class="picked-streaming picked-streaming--warning">
-            {{ pickStreamingNote.text }}
-          </p>
-          <div v-else-if="pickStreamingNote?.providers?.length" class="picked-streaming">
-            <span class="picked-streaming-label">Streaming on</span>
-            <span v-for="p in pickStreamingNote.providers" :key="p.id" class="picked-provider">
-              <img v-if="p.logoUrl" :src="p.logoUrl" alt="" class="picked-provider-logo" />
-              {{ p.name }}
-            </span>
-          </div>
+      <PickCard :film="matches[0]" label="Tonight's pick">
+        <p v-if="pickStreamingNote?.warning" class="picked-streaming picked-streaming--warning">
+          {{ pickStreamingNote.text }}
+        </p>
+        <div v-else-if="pickStreamingNote?.providers?.length" class="picked-streaming">
+          <span class="picked-streaming-label">Streaming on</span>
+          <span v-for="p in pickStreamingNote.providers" :key="p.id" class="picked-provider">
+            <img v-if="p.logoUrl" :src="p.logoUrl" alt="" class="picked-provider-logo" />
+            {{ p.name }}
+          </span>
         </div>
-      </div>
+      </PickCard>
       <p class="tmdb-attribution">
         Streaming data
         <a href="https://www.justwatch.com/" target="_blank" rel="noopener noreferrer">powered by JustWatch</a>
@@ -169,7 +161,15 @@ function downloadCsv() {
       <ul class="results">
         <li v-for="film in matches" :key="film.url">
           <a :href="film.url" target="_blank" rel="noopener noreferrer">
-            <img v-if="film.posterUrl" :src="film.posterUrl" :alt="film.title" class="poster" />
+            <img
+              v-if="film.posterUrl"
+              :src="film.posterUrl"
+              :alt="film.title"
+              class="poster"
+              width="342"
+              height="513"
+              loading="lazy"
+            />
             <div v-else class="poster poster-placeholder" aria-hidden="true"></div>
             <span class="poster-title">{{ film.title }}</span>
           </a>
@@ -187,7 +187,7 @@ h1 {
 }
 
 .subtitle {
-  color: #999;
+  color: var(--text-muted);
   margin-top: 0;
   margin-bottom: 2rem;
 }
@@ -204,51 +204,47 @@ h1 {
   gap: 0.35rem;
 }
 
-.field input {
-  width: 100%;
-}
-
 .field-error {
   margin: 0;
   font-size: 0.85rem;
-  color: #c0392b;
+  color: var(--danger);
 }
 
-input,
 button {
   font-size: 1rem;
   padding: 0.6rem 0.8rem;
-  border-radius: 0.4rem;
-  border: 1px solid #ccc;
-}
-
-input {
-  background: #242424;
-  color: #e0e0e0;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--line);
 }
 
 button {
-  background: #4a8f63;
-  color: #fff;
+  background: var(--accent);
+  color: var(--on-accent);
   border: none;
   cursor: pointer;
   font-weight: 600;
 }
 
-button:disabled {
-  background: #3d5c48;
-  cursor: not-allowed;
+.pick-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+}
+
+.pick-button:not(:disabled):hover {
+  background: var(--accent-hover);
 }
 
 .download-button {
   margin-top: 0;
-  background: #4a8f63;
-  color: #e0e0e0;
-  border: 1px solid #4a8f63;
+  background: var(--accent);
+  color: var(--text);
+  border: 1px solid var(--accent);
 }
 
 .download-button:hover {
-  background: #3d7a53;
+  background: var(--accent-hover);
 }
 
 .download-button-small {
@@ -258,7 +254,7 @@ button:disabled {
 
 .all-matches-button {
   background: transparent;
-  color: #4a8f63;
+  color: var(--accent-text);
   border: none;
   font-size: 0.95rem;
   font-weight: 400;
@@ -269,64 +265,10 @@ button:disabled {
 
 .all-matches-button:disabled {
   background: transparent;
-  color: #3d5c48;
-  cursor: not-allowed;
 }
 
 .all-matches-button:hover {
   text-decoration: underline;
-}
-
-.picked-film {
-  margin-top: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  padding: 1.5rem;
-  border: 1px solid #4a8f63;
-  border-radius: 0.75rem;
-  background: #1a2620;
-}
-
-.picked-poster {
-  width: 7rem;
-  aspect-ratio: 2 / 3;
-  border-radius: 0.5rem;
-  object-fit: cover;
-  background: #242424;
-  flex-shrink: 0;
-}
-
-.picked-info {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.4rem;
-}
-
-.picked-label {
-  margin: 0;
-  font-size: 0.75rem;
-  color: #999;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.picked-title {
-  color: #e0e0e0;
-  font-size: 1.1rem;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.picked-title:hover {
-  color: #4a8f63;
-}
-
-.picked-meta {
-  margin: 0.15rem 0 0;
-  font-size: 0.85rem;
-  color: #999;
 }
 
 .picked-streaming {
@@ -336,31 +278,31 @@ button:disabled {
   gap: 0.4rem;
   margin: 0.35rem 0 0;
   font-size: 0.8rem;
-  color: #cfe3d6;
+  color: var(--text);
 }
 
 .picked-streaming--warning {
-  color: #d98c4a;
+  color: var(--warning);
 }
 
 .picked-streaming-label {
-  color: #999;
+  color: var(--text-muted);
 }
 
 .picked-provider {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  background: #17211c;
-  border: 1px solid #3d5c48;
-  border-radius: 999px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius-pill);
   padding: 0.15rem 0.55rem;
 }
 
 .picked-provider-logo {
   width: 0.9rem;
   height: 0.9rem;
-  border-radius: 0.2rem;
+  border-radius: var(--radius-logo);
   object-fit: cover;
 }
 
@@ -368,30 +310,8 @@ button:disabled {
   margin-top: 1.5rem;
 }
 
-.status.loading {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.spinner {
-  width: 1rem;
-  height: 1rem;
-  flex-shrink: 0;
-  border: 2px solid #2e3f34;
-  border-top-color: #4a8f63;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .status.error {
-  color: #c0392b;
+  color: var(--danger);
 }
 
 .results {
@@ -413,40 +333,41 @@ button:disabled {
 
 .poster {
   width: 100%;
+  height: auto;
   aspect-ratio: 2 / 3;
-  border-radius: 0.4rem;
+  border-radius: var(--radius-control);
   object-fit: cover;
-  background: #242424;
+  background: var(--surface);
 }
 
 .poster-placeholder {
-  border: 1px solid #333;
+  border: 1px solid var(--line);
 }
 
 .poster-title {
   font-size: 0.8rem;
-  color: #e0e0e0;
+  color: var(--text);
   text-align: center;
   line-height: 1.3;
 }
 
 .results a:hover .poster-title {
-  color: #4a8f63;
+  color: var(--accent-text);
 }
 
 .tmdb-attribution {
   margin-top: 1.5rem;
   font-size: 0.75rem;
-  color: #777;
+  color: var(--text-faint);
   text-align: center;
 }
 
 .tmdb-attribution a {
-  color: #777;
+  color: var(--text-faint);
 }
 
 .tmdb-attribution a:hover {
-  color: #4a8f63;
+  color: var(--accent-text);
 }
 
 /* --- Mobile (keep the 640px breakpoint in sync with App.vue) --- */
@@ -461,28 +382,6 @@ button:disabled {
 
   .results {
     grid-template-columns: repeat(2, 1fr);
-  }
-
-  /* Keep the poster and its details side by side -- just tighter and smaller. */
-  .picked-film {
-    gap: 0.9rem;
-    padding: 1rem;
-  }
-
-  .picked-poster {
-    width: 5rem;
-  }
-
-  .picked-label {
-    font-size: 0.7rem;
-  }
-
-  .picked-title {
-    font-size: 1rem;
-  }
-
-  .picked-meta {
-    font-size: 0.8rem;
   }
 }
 </style>

@@ -82,7 +82,7 @@ describe('StreamingFilter', () => {
       props: { filter: fakeFilter({ enabled: true, region: null }) }
     })
 
-    expect(wrapper.find('.streaming-hint').text()).toContain('pick a country')
+    expect(wrapper.find('.streaming-hint').text()).toContain('Pick a country')
     expect(wrapper.findAll('.chip')).toHaveLength(0)
   })
 
