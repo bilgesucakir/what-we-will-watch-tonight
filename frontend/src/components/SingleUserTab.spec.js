@@ -32,6 +32,9 @@ describe('SingleUserTab', () => {
       if (url.startsWith('/api/streaming-providers')) {
         return jsonResponse([])
       }
+      if (url === '/api/posters') {
+        return jsonResponse([])
+      }
       return watchlistImpl(url)
     })
 

@@ -49,6 +49,9 @@ https://github.com/user-attachments/assets/86a14294-cb2b-41a1-8528-61a1ebd909a5
 
   A smaller secondary action in both tabs. Browses the full list as a poster
   grid, sorted alphabetically, each poster linking to its Letterboxd page.
+  Shows 24 films at a time with a "**Show more**" button. The list itself
+  arrives in one quick response; posters are looked up only for the films on
+  screen, a page at a time, so even a huge watchlist appears right away.
 
 - **Nothing in common?**
 
@@ -161,6 +164,7 @@ app is running; the raw OpenAPI spec is at `/v3/api-docs`.
 |---|---|
 | `GET /api/intersect?user=…&user=…` | Films on every one of 2–4 watchlists, or one random pick |
 | `GET /api/watchlist?user=…` | One user's watchlist, or one random pick |
+| `POST /api/posters` | Posters for one page of a full list |
 | `GET /api/streaming-providers?region=…` | Streaming services in a region (builds the filter chips) |
 | `GET /api/underwatched-pick` | One random film from a curated underseen list |
 | `GET /api/users/{username}/exists` | Username + public-watchlist check, for live validation |
@@ -183,7 +187,7 @@ alphabetically by title, of the same object:
     "year": 2024,
     "rating": null,
     "length": null,
-    "posterUrl": "https://image.tmdb.org/t/p/w342/abc123.jpg",
+    "posterUrl": null,
     "providers": []
   }
 ]
@@ -194,7 +198,7 @@ alphabetically by title, of the same object:
 | `title` | Letterboxd title, with year. |
 | `url` | Letterboxd film page. |
 | `year` | Parsed from the title, not the slug. `null` if it can't be determined. |
-| `posterUrl` | TMDB poster. `null` if `TMDB_API_KEY` is unset or nothing matches. Resolved differently per mode — see below. |
+| `posterUrl` | TMDB poster for a random pick. Always `null` in the full list: fetch those a page at a time from `POST /api/posters`. `null` too if `TMDB_API_KEY` is unset or nothing matches. |
 | `rating` | Average Letterboxd rating, 0–5. |
 | `length` | Runtime in minutes. |
 | `providers` | Streaming services carrying the film. |
@@ -202,13 +206,12 @@ alphabetically by title, of the same object:
 #### Full list (default)
 
 - Every film on all 2–4 watchlists.
-- `rating` and `length` are always `null`.
-- `providers` is always `[]`.
-- `posterUrl` comes from a TMDB title search over movies **and** TV
-  (Letterboxd lists some mini-series as films), ranked by exact title
-  (English or original-language), then `year`, then popularity.
-- If that search is still ambiguous, the Letterboxd page is scraped for the
-  exact TMDB entry — its id, and whether it's a film or a series.
+- No lookups beyond the watchlists themselves, so it returns quickly however
+  long the list is.
+- `posterUrl`, `rating` and `length` are always `null`; `providers` is
+  always `[]`. The frontend shows 24 films at a time and asks
+  [`POST /api/posters`](#post-apiposters) for each page's posters. The list
+  lives in the browser, so the server keeps no state between requests.
 
 #### Random pick (`&random=true`)
 
@@ -278,7 +281,7 @@ Single-user counterpart to `/api/intersect`, for one person's own watchlist.
     "year": 2024,
     "rating": null,
     "length": null,
-    "posterUrl": "https://image.tmdb.org/t/p/w342/abc123.jpg",
+    "posterUrl": null,
     "providers": []
   }
 ]
@@ -289,6 +292,42 @@ Single-user counterpart to `/api/intersect`, for one person's own watchlist.
 - a username is blank
 - a user doesn't exist on Letterboxd
 - a watchlist is private or empty
+
+### `POST /api/posters`
+
+Posters for one page of a full list. Send up to **48** films exactly as the
+full list returned them (only `url`, `title` and `year` are read):
+
+```json
+[
+  { "url": "https://letterboxd.com/film/the-outrun/", "title": "The Outrun (2024)", "year": 2024 },
+  { "url": "https://letterboxd.com/film/ghosts-2020-2/", "title": "Ghosts (2020)", "year": 2020 }
+]
+```
+
+Returns `200` and one entry per film, in the same order:
+
+```json
+[
+  { "url": "https://letterboxd.com/film/the-outrun/", "posterUrl": "https://image.tmdb.org/t/p/w342/abc123.jpg" },
+  { "url": "https://letterboxd.com/film/ghosts-2020-2/", "posterUrl": null }
+]
+```
+
+How each poster is found:
+
+- A TMDB title search over movies **and** TV (Letterboxd lists some
+  mini-series as films), ranked by exact title (English or
+  original-language), then `year`, then popularity.
+- If that search is still ambiguous, the Letterboxd page is scraped for the
+  exact TMDB entry: its id, and whether it's a film or a series.
+- `posterUrl` is `null` if `TMDB_API_KEY` is unset or nothing matches.
+
+`400` with `{ "error": "..." }`:
+
+- the array is empty or has more than 48 films
+- a film's `url` isn't a Letterboxd film URL, or it has no `title`
+- the body isn't valid JSON
 
 ### `GET /api/streaming-providers?region={ISO-3166-1}`
 

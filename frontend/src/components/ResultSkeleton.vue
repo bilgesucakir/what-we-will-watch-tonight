@@ -7,7 +7,8 @@ defineProps({
   kind: { type: String, default: 'pick' } // 'pick' | 'grid'
 })
 
-const GRID_TILES = 6
+// One row: three across on desktop; the third hides on phones (two columns).
+const GRID_TILES = 3
 </script>
 
 <template>
@@ -105,6 +106,10 @@ const GRID_TILES = 6
 
   .skeleton-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .skeleton-tile:nth-child(3) {
+    display: none;
   }
 }
 </style>
