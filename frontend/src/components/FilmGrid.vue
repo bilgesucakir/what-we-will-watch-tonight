@@ -64,7 +64,7 @@ function showMore() {
 <template>
   <div class="list-bar">
     <p class="list-summary">{{ summary }}</p>
-    <button type="button" class="download-button button-secondary" @click="$emit('download')">
+    <button type="button" class="download-button button-link" @click="$emit('download')">
       Download CSV
     </button>
   </div>
@@ -92,7 +92,7 @@ function showMore() {
   </ul>
 
   <div v-if="remaining > 0" class="more">
-    <button type="button" class="show-more button-secondary" @click="showMore">
+    <button type="button" class="show-more button-link" @click="showMore">
       Show {{ Math.min(PAGE_SIZE, remaining) }} more
     </button>
     <p class="more-count">Showing {{ shownFilms.length }} of {{ films.length }}</p>
@@ -174,12 +174,8 @@ function showMore() {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.3rem;
   margin-top: 1.25rem;
-}
-
-.show-more {
-  width: 100%;
 }
 
 .more-count {

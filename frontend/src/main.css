@@ -68,27 +68,22 @@ button:not(:disabled):active {
 }
 
 /*
- * The one secondary button. Only the "Pick Something to Watch" button is
- * filled green; every other bordered button looks like this.
+ * Quiet gray text action for the full list's "Download CSV" and "Show more";
+ * only "Pick Something to Watch" is a filled button.
  */
-.button-secondary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
+.button-link {
+  padding: 0;
   font-size: 0.9rem;
-  font-weight: 600;
-  padding: 0.55rem 1.1rem;
-  color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-control);
+  font-weight: 400;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
   cursor: pointer;
 }
 
-.button-secondary:hover {
-  background: var(--surface-2);
-  border-color: var(--text-faint);
+.button-link:hover {
+  color: var(--text);
+  text-decoration: underline;
 }
 
 button:disabled {
