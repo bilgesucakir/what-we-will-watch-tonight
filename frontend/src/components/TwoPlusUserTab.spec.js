@@ -45,6 +45,9 @@ describe('TwoPlusUserTab', () => {
       if (url.startsWith('/api/streaming-providers')) {
         return jsonResponse(streamingProviders)
       }
+      if (url === '/api/posters') {
+        return jsonResponse([])
+      }
       return intersectImpl(url)
     })
 

@@ -48,52 +48,76 @@ class FilmResponseServiceTest {
     }
 
     @Test
-    void nonRandomModeReturnsAllFilmsWithPostersAndNoDetailLookups() {
-        when(posterService.findPoster(eq("Dune: Part Two (2024)"), eq(2024)))
-                .thenReturn(new PosterMatch("https://image.tmdb.org/t/p/w342/dune.jpg", true));
-        when(posterService.findPoster(eq("Anora (2024)"), eq(2024)))
-                .thenReturn(new PosterMatch("https://image.tmdb.org/t/p/w342/anora.jpg", true));
-
+    void nonRandomModeReturnsAllFilmsBareWithoutAnyLookups() {
         List<Film> films = List.of(
                 new Film("dune-part-two", "Dune: Part Two (2024)", 2024),
                 new Film("anora", "Anora (2024)", 2024));
 
         List<FilmMatchDto> dtos = service.toDtos(films, false);
 
-        assertThat(dtos).hasSize(2);
-        assertThat(dtos).extracting(FilmMatchDto::title)
-                .containsExactlyInAnyOrder("Dune: Part Two (2024)", "Anora (2024)");
-        assertThat(dtos).extracting(FilmMatchDto::posterUrl)
-                .containsExactlyInAnyOrder("https://image.tmdb.org/t/p/w342/dune.jpg", "https://image.tmdb.org/t/p/w342/anora.jpg");
-        assertThat(dtos).extracting(FilmMatchDto::rating, FilmMatchDto::length).containsOnly(tuple(null, null));
+        assertThat(dtos).extracting(FilmMatchDto::title, FilmMatchDto::url, FilmMatchDto::year)
+                .containsExactlyInAnyOrder(
+                        tuple("Dune: Part Two (2024)", "https://letterboxd.com/film/dune-part-two/", 2024),
+                        tuple("Anora (2024)", "https://letterboxd.com/film/anora/", 2024));
+        assertThat(dtos).extracting(FilmMatchDto::posterUrl, FilmMatchDto::rating, FilmMatchDto::length)
+                .containsOnly(tuple(null, null, null));
+        verify(posterService, never()).findPoster(any(), any());
         verify(scraperService, never()).fetchFilmDetails(any());
         verify(scraperService, never()).fetchTmdbRef(any());
     }
 
     @Test
-    void nonRandomModeConfirmsTheExactIdWhenTheTitleSearchIsNotConfident() {
+    void posterUrlsReturnsOnePosterPerFilmInOrder() {
+        when(posterService.findPoster(eq("Dune: Part Two (2024)"), eq(2024)))
+                .thenReturn(new PosterMatch("https://image.tmdb.org/t/p/w342/dune.jpg", true));
+        when(posterService.findPoster(eq("Anora (2024)"), eq(2024)))
+                .thenReturn(new PosterMatch(null, true));
+
+        List<String> urls = service.posterUrls(List.of(
+                new Film("dune-part-two", "Dune: Part Two (2024)", 2024),
+                new Film("anora", "Anora (2024)", 2024)));
+
+        assertThat(urls).containsExactly("https://image.tmdb.org/t/p/w342/dune.jpg", null);
+        verify(scraperService, never()).fetchTmdbRef(any());
+    }
+
+    @Test
+    void posterUrlsConfirmsTheExactIdWhenTheTitleSearchIsNotConfident() {
         when(posterService.findPoster(eq("Ghosts (2020)"), eq(2020)))
                 .thenReturn(new PosterMatch("https://image.tmdb.org/t/p/w342/wrong.jpg", false));
         when(scraperService.fetchTmdbRef("ghosts-2020-2")).thenReturn(new TmdbRef(726413, "movie"));
         when(posterService.findPosterUrlByTmdbId(726413, "movie"))
                 .thenReturn("https://image.tmdb.org/t/p/w342/hayaletler.jpg");
 
-        List<FilmMatchDto> dtos = service.toDtos(
-                List.of(new Film("ghosts-2020-2", "Ghosts (2020)", 2020)), false);
+        List<String> urls = service.posterUrls(List.of(new Film("ghosts-2020-2", "Ghosts (2020)", 2020)));
 
-        assertThat(dtos.get(0).posterUrl()).isEqualTo("https://image.tmdb.org/t/p/w342/hayaletler.jpg");
+        assertThat(urls).containsExactly("https://image.tmdb.org/t/p/w342/hayaletler.jpg");
     }
 
     @Test
-    void nonRandomModeKeepsTheSearchGuessWhenTheExactLookupComesUpEmpty() {
+    void posterUrlsKeepsTheSearchGuessWhenTheExactLookupComesUpEmpty() {
         when(posterService.findPoster(any(), any()))
                 .thenReturn(new PosterMatch("https://image.tmdb.org/t/p/w342/guess.jpg", false));
         when(scraperService.fetchTmdbRef(any())).thenReturn(null);
 
-        List<FilmMatchDto> dtos = service.toDtos(
-                List.of(new Film("obscure", "Obscure (2020)", 2020)), false);
+        List<String> urls = service.posterUrls(List.of(new Film("obscure", "Obscure (2020)", 2020)));
 
-        assertThat(dtos.get(0).posterUrl()).isEqualTo("https://image.tmdb.org/t/p/w342/guess.jpg");
+        assertThat(urls).containsExactly("https://image.tmdb.org/t/p/w342/guess.jpg");
+    }
+
+    @Test
+    void slugFromUrlReadsBackTheSlugOfAFilmUrl() {
+        assertThat(FilmResponseService.slugFromUrl("https://letterboxd.com/film/dune-part-two/"))
+                .isEqualTo("dune-part-two");
+    }
+
+    @Test
+    void slugFromUrlRejectsAnythingThatIsNotALetterboxdFilmUrl() {
+        assertThat(FilmResponseService.slugFromUrl(null)).isNull();
+        assertThat(FilmResponseService.slugFromUrl("https://letterboxd.com/alice/watchlist/")).isNull();
+        assertThat(FilmResponseService.slugFromUrl("https://example.com/film/anora/")).isNull();
+        assertThat(FilmResponseService.slugFromUrl("https://letterboxd.com/film/anora")).isNull();
+        assertThat(FilmResponseService.slugFromUrl("https://letterboxd.com/film/a/b/")).isNull();
     }
 
     @Test

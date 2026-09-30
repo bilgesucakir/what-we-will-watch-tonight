@@ -2,6 +2,7 @@ package com.whatwewillwatchtonight.controller.error;
 
 import com.whatwewillwatchtonight.controller.dto.ErrorResponseDto;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -22,5 +23,10 @@ public class ApiExceptionHandler {
     public ResponseEntity<ErrorResponseDto> handleMissingParameter(MissingServletRequestParameterException exception) {
         return ResponseEntity.badRequest()
                 .body(new ErrorResponseDto("Missing required parameter: " + exception.getParameterName() + "."));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponseDto> handleUnreadableBody(HttpMessageNotReadableException exception) {
+        return ResponseEntity.badRequest().body(new ErrorResponseDto("The request body isn't valid JSON."));
     }
 }

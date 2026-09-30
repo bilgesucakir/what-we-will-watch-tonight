@@ -17,17 +17,22 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
- * Builds the API response for a list of films. The full list just gets a poster
- * per film; a single random pick also gets its Letterboxd rating and runtime,
- * and -- when a {@link StreamingFilter} is in play -- is drawn from the films
- * on the group's services.
+ * Builds the API response for a list of films. The full list is returned bare
+ * (no lookups, so it's fast even for huge watchlists); the frontend then asks
+ * {@link #posterUrls} for one page of posters at a time. A single random pick
+ * gets its poster, Letterboxd rating and runtime, and -- when a
+ * {@link StreamingFilter} is in play -- is drawn from the films on the group's
+ * services.
  */
 @Service
 public class FilmResponseService {
 
     private static final String FILM_URL_TEMPLATE = "https://letterboxd.com/film/%s/";
+    private static final Pattern FILM_URL_PATTERN = Pattern.compile("^https://letterboxd\\.com/film/([^/?#]+)/$");
 
     // How many film pages a filtered pick probes in parallel at a time while
     // scanning the intersection for a streamable film.
@@ -59,7 +64,7 @@ public class FilmResponseService {
     /**
      * @param films  the films to build a response for
      * @param random {@code true} to return one random pick, {@code false} to
-     *               return the whole list sorted alphabetically
+     *               return the whole list sorted alphabetically, without posters
      * @param filter when non-null, the random pick is re-rolled until it's
      *               streamable on one of the given services; ignored when
      *               {@code random} is {@code false}
@@ -68,13 +73,39 @@ public class FilmResponseService {
         if (!random) {
             return films.stream()
                     .sorted(Comparator.comparing(Film::title, String.CASE_INSENSITIVE_ORDER))
-                    .map(film -> CompletableFuture.supplyAsync(() -> plainDto(film), ioExecutor))
-                    .toList()
-                    .stream()
-                    .map(CompletableFuture::join)
+                    .map(film -> dto(film, FilmDetails.empty(), null, List.of()))
                     .toList();
         }
         return pickRandom(films, filter).map(List::of).orElseGet(List::of);
+    }
+
+    /**
+     * The inverse of the {@code url} this service puts on every film.
+     *
+     * @return the film's Letterboxd slug, or {@code null} if {@code url} isn't a
+     *         Letterboxd film URL
+     */
+    public static String slugFromUrl(String url) {
+        if (url == null) {
+            return null;
+        }
+        Matcher matcher = FILM_URL_PATTERN.matcher(url);
+        return matcher.matches() ? matcher.group(1) : null;
+    }
+
+    /**
+     * Looks up posters for a page of the full list, in parallel.
+     *
+     * @return one poster URL per film, in the same order; an entry is
+     *         {@code null} when no poster was found
+     */
+    public List<String> posterUrls(List<Film> films) {
+        return films.stream()
+                .map(film -> CompletableFuture.supplyAsync(() -> posterFor(film), ioExecutor))
+                .toList()
+                .stream()
+                .map(CompletableFuture::join)
+                .toList();
     }
 
     /**
@@ -135,19 +166,18 @@ public class FilmResponseService {
         }
     }
 
-    private FilmMatchDto plainDto(Film film) {
+    private String posterFor(Film film) {
         // Title search is enough for most films. When it can't pin the title +
         // year to a single result (common titles, obscure films, series), fall
         // back to the exact TMDB id off the film's Letterboxd page.
         PosterMatch match = posterService.findPoster(film.title(), film.year());
-        String posterUrl = match.url();
         if (!match.confident()) {
             String exact = posterByExactId(film.slug());
             if (exact != null) {
-                posterUrl = exact;
+                return exact;
             }
         }
-        return dto(film, FilmDetails.empty(), posterUrl, List.of());
+        return match.url();
     }
 
     private FilmMatchDto enrichedDto(Film film, FilmDetails details, List<StreamingProvider> providers) {

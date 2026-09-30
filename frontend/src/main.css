@@ -67,6 +67,30 @@ button:not(:disabled):active {
   transform: scale(0.98);
 }
 
+/*
+ * The one secondary button. Only the "Pick Something to Watch" button is
+ * filled green; every other bordered button looks like this.
+ */
+.button-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.55rem 1.1rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+}
+
+.button-secondary:hover {
+  background: var(--surface-2);
+  border-color: var(--text-faint);
+}
+
 button:disabled {
   opacity: 0.45;
   cursor: not-allowed;

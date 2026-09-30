@@ -6,6 +6,7 @@ import { downloadFilmsAsCsv } from '../utils/csv'
 import { PhPopcorn } from '@phosphor-icons/vue'
 import StreamingFilter from './StreamingFilter.vue'
 import SofaStage from './SofaStage.vue'
+import FilmGrid from './FilmGrid.vue'
 import PickCard from './PickCard.vue'
 import ResultSkeleton from './ResultSkeleton.vue'
 import UsernameInput from './UsernameInput.vue'
@@ -100,6 +101,11 @@ const announcement = computed(() => {
   return `${matches.value.length} films`
 })
 
+const listSummary = computed(() => {
+  const n = matches.value?.length ?? 0
+  return `${n} ${n === 1 ? 'film' : 'films'} in your watchlist`
+})
+
 function downloadCsv() {
   downloadFilmsAsCsv(matches.value, `${searchedUsername.value}_watchlist.csv`)
 }
@@ -158,24 +164,7 @@ function downloadCsv() {
     </template>
 
     <template v-else>
-      <ul class="results">
-        <li v-for="film in matches" :key="film.url">
-          <a :href="film.url" target="_blank" rel="noopener noreferrer">
-            <img
-              v-if="film.posterUrl"
-              :src="film.posterUrl"
-              :alt="film.title"
-              class="poster"
-              width="342"
-              height="513"
-              loading="lazy"
-            />
-            <div v-else class="poster poster-placeholder" aria-hidden="true"></div>
-            <span class="poster-title">{{ film.title }}</span>
-          </a>
-        </li>
-      </ul>
-      <button type="button" class="download-button download-button-small" @click="downloadCsv">Download CSV</button>
+      <FilmGrid :films="matches" :summary="listSummary" @download="downloadCsv" />
       <p class="tmdb-attribution">Posters from <a href="https://www.themoviedb.org/" target="_blank" rel="noopener noreferrer">TMDB</a></p>
     </template>
   </template>
@@ -234,22 +223,6 @@ button {
 
 .pick-button:not(:disabled):hover {
   background: var(--accent-hover);
-}
-
-.download-button {
-  margin-top: 0;
-  background: var(--accent);
-  color: var(--text);
-  border: 1px solid var(--accent);
-}
-
-.download-button:hover {
-  background: var(--accent-hover);
-}
-
-.download-button-small {
-  font-size: 0.8rem;
-  padding: 0.4rem 0.6rem;
 }
 
 .all-matches-button {
@@ -314,47 +287,6 @@ button {
   color: var(--danger);
 }
 
-.results {
-  list-style: none;
-  padding: 0;
-  margin: 1.5rem 0 0.75rem;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-}
-
-.results a {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  color: inherit;
-  text-decoration: none;
-}
-
-.poster {
-  width: 100%;
-  height: auto;
-  aspect-ratio: 2 / 3;
-  border-radius: var(--radius-control);
-  object-fit: cover;
-  background: var(--surface);
-}
-
-.poster-placeholder {
-  border: 1px solid var(--line);
-}
-
-.poster-title {
-  font-size: 0.8rem;
-  color: var(--text);
-  text-align: center;
-  line-height: 1.3;
-}
-
-.results a:hover .poster-title {
-  color: var(--accent-text);
-}
-
 .tmdb-attribution {
   margin-top: 1.5rem;
   font-size: 0.75rem;
@@ -378,10 +310,6 @@ button {
 
   .subtitle {
     margin-bottom: 1.25rem;
-  }
-
-  .results {
-    grid-template-columns: repeat(2, 1fr);
   }
 }
 </style>
