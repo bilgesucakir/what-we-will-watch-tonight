@@ -19,8 +19,10 @@ Both default to a single random pick — for when you want an answer, not a
 list to argue about.
 
 ## Demo
+https://github.com/user-attachments/assets/9254ff44-2fe0-4f6c-80b1-3995a195b1de
 
-https://github.com/user-attachments/assets/86a14294-cb2b-41a1-8528-61a1ebd909a5
+
+
 
 
 ## Features
