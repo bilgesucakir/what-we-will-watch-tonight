@@ -8,7 +8,8 @@ Can't decide what to watch? Enter your Letterboxd username, or up to four
 people, and get **one film** from your watchlists. With a group, the pick
 comes only from films that are on everyone's watchlist.
 
-**Try it:** [what-we-will-watch-tonight.onrender.com](https://what-we-will-watch-tonight.onrender.com)
+**Try it:** https://whatwewillwatchtonight.com/
+
 
 Two modes, one per tab:
 
